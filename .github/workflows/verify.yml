@@ -1,0 +1,45 @@
+name: Background checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: background-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test and build without Studio
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Roblox tools
+        uses: paradoxum-games/setup-rokit@29e6ee09651a3711e3a287a1037671d7b74db6d0 # v3
+        with:
+          version: "1.2.0"
+          cache: true
+
+      - name: Run offline tests and build
+        run: python3 prototype/tools/check_background.py --output "$RUNNER_TEMP/brainrot-checks"
+
+      - name: Keep build and check reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: date-a-brainrot-${{ github.sha }}
+          path: ${{ runner.temp }}/brainrot-checks
+          if-no-files-found: warn
+          retention-days: 14

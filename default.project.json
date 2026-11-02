@@ -1,0 +1,22 @@
+{
+  "name": "Date a Brainrot Prototype",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": { "$path": "src/shared" },
+      "BrainrotAssets": { "$path": "assets/BrainrotCollection.rbxmx" }
+    },
+    "ServerScriptService": { "PrototypeServer": { "$path": "src/server" } },
+    "StarterPlayer": { "StarterPlayerScripts": { "PrototypeClient": { "$path": "src/client" } } },
+    "StarterGui": { "$properties": { "ScreenOrientation": "Portrait" } },
+    "Workspace": {
+      "$properties": { "Gravity": 196.2 },
+      "PrototypeFloor": {
+        "$className": "Part",
+        "$properties": { "Anchored": true, "Size": [64, 1, 64], "Position": [0, -2, 0], "Color": [0.071, 0.082, 0.141], "Material": "SmoothPlastic" }
+      }
+    },
+    "Lighting": { "$properties": { "Technology": "Voxel", "ClockTime": 18, "Brightness": 2, "Ambient": [0.4, 0.4, 0.5] } },
+    "SoundService": { "$properties": { "RespectFilteringEnabled": true } }
+  }
+}
