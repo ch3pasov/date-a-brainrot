@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 local StarterGui = game:GetService("StarterGui")
 local TextService = game:GetService("TextService")
 local player = Players.LocalPlayer
@@ -66,6 +67,17 @@ local width, height = 1200, 760
 local playerGui = player:WaitForChild("PlayerGui")
 playerGui.ScreenOrientation = StarterGui.ScreenOrientation
 local rotationRequired = false
+local windowFocused, robloxMenuOpen = true, GuiService.MenuIsOpen
+local function revealIsPaused()
+    return not windowFocused or robloxMenuOpen or rotationRequired or modal ~= nil
+end
+local function refreshRevealPause()
+    if gamePresentation and gamePresentation.refreshRevealPause then gamePresentation.refreshRevealPause() end
+end
+UserInputService.WindowFocusReleased:Connect(function() windowFocused=false; refreshRevealPause() end)
+UserInputService.WindowFocused:Connect(function() windowFocused=true; refreshRevealPause() end)
+GuiService.MenuOpened:Connect(function() robloxMenuOpen=true; refreshRevealPause() end)
+GuiService.MenuClosed:Connect(function() robloxMenuOpen=false; refreshRevealPause() end)
 local backdrop = UI.new("ScreenGui", { Name = "DateABrainrotBackdrop", ScreenInsets = Enum.ScreenInsets.None, ClipToDeviceSafeArea = false, ResetOnSpawn = false, DisplayOrder = 4 }, playerGui)
 UI.frame(backdrop, "Fill", UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), C.bg, 0)
 local gui = UI.new("ScreenGui", { Name = "DateABrainrot", ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets, ResetOnSpawn = false, DisplayOrder = 5, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, playerGui)
@@ -851,7 +863,7 @@ renderGame = function(updateOnly)
         revealState = dateRevealState,
         dateCollectionState = dateCollectionState,
         reactionState = gameReactionState,
-        revealPaused = function() return rotationRequired or modal ~= nil end,
+        revealPaused = revealIsPaused,
     })
     gamePresentationToken = session.token
     if inFlightGameInput and inFlightGameInput.token == session.token then gamePresentation.preview(inFlightGameInput.choice) end

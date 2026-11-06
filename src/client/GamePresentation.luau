@@ -239,7 +239,11 @@ function Presentation.mount(body, session, character, variant, options)
                     outline.Transparency = selected and 0 or .1
                 end
             end
-            prompt.Text = cue.finished and turnPrompt(controller.session) or ("Запоминай · " .. cue.index .. "/" .. cue.total)
+            prompt.Text = cue.finished and turnPrompt(controller.session) or (cue.paused and "Показ на паузе" or ("Запоминай · " .. cue.index .. "/" .. cue.total))
+        end
+        function controller.refreshRevealPause()
+            if not alive or not revealState or not controller.revealing then return end
+            if DateReveal.setPaused(revealState, options.revealPaused and options.revealPaused() or false) then showReveal() end
         end
         controller.updateContent = function(nextSession)
             counter.Text = tostring(nextSession.step) .. " / " .. total
@@ -262,7 +266,7 @@ function Presentation.mount(body, session, character, variant, options)
             revealConnection = RunService.RenderStepped:Connect(function(delta)
                 if not alive then revealConnection:Disconnect(); return end
                 if not controller.revealing then revealConnection:Disconnect(); return end
-                if DateReveal.setPaused(revealState, options.revealPaused and options.revealPaused() or false) then showReveal() end
+                controller.refreshRevealPause()
                 if DateReveal.advance(revealState, delta) then
                     showReveal()
                     if DateReveal.current(revealState).finished then

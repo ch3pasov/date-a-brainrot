@@ -58,7 +58,11 @@ Each character now has a short personal ending for the first selfie, echoing the
 conversation. The same memory appears in the wide story book; replay results keep
 the record-focused message. These 34 endings add no saved-profile fields.
 
-378 offline checks and both source builds pass. The full-catalog simulation covers
+Date demonstrations also pause when the window loses focus or the Roblox menu
+opens. Returning replays the current cue in full, even if no frames ran while
+the game was hidden. Earlier cues and completed reveals are preserved.
+
+382 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
