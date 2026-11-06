@@ -68,7 +68,7 @@ test("Result preview routes on click with the new frame, survives rebuild and re
     local source=fs.readFile("src/client/App.client.luau")
     local a=assert(source:find("showResult = function(",1,true))
     local b=assert(source:find("local function syncGameControls()",a,true))
-    local f={options={},opened={},tabs={}}
+    local f={options={},opened={},tabs={},focusKeys={}}
     local api=luau.load([[
         local showResult,modal,modalRebuild,modalViewer
         local busy=false
@@ -80,7 +80,7 @@ test("Result preview routes on click with the new frame, survives rebuild and re
         Logic={character=function()return{id="a"}end},state={album={{key="story"}}},mobile=true,height=760,width=480,
         ResultCard={mount=function(_,_,options)table.insert(f.options,options);return{}end},
         Feedback={pop=function()end,play=function()end,burst=function()end},
-        nav=function(tab)table.insert(f.tabs,tab)end,
+        nav=function(tab,key)table.insert(f.tabs,tab);table.insert(f.focusKeys,key)end,
         showPhotoStudio=function(key,selection)table.insert(f.opened,{key=key,selection=selection})end,
     }})()
     api.show({passed=true,result="album",newFrames={"travel"}},"story",3,"park")
@@ -88,7 +88,9 @@ test("Result preview routes on click with the new frame, survives rebuild and re
     api.busy(true);f.options[2].editPhoto("travel");assert(#f.opened==0)
     api.busy(false);f.options[2].editPhoto("travel")
     assert(f.tabs[1]=="album" and f.opened[1].key=="story" and f.opened[1].selection.frameId=="travel")
+    assert(f.focusKeys[1]=="story")
     assert(f.opened[1].selection.poseId==nil)
+    f.options[2].continue();assert(f.tabs[2]=="album" and f.focusKeys[2]=="story")
 end)
 fs.writeFile("prototype/evidence/frame-reward-tests.json",serde.encode("json",{passed=#tests,tests=tests,
     scope="Production reward/result geometry and preview route callbacks; no live render or service test"},true))

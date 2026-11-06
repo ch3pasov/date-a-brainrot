@@ -82,10 +82,16 @@ function Album.render(body, state, mobile, page, callbacks)
     local photoHeight = hintY + hintH + 12
     UI.new("UIGridLayout", { CellSize = UDim2.new(1 / columns, -12, 0, photoHeight), CellPadding = UDim2.fromOffset(14, 16), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
     page = math.clamp(page, 1, math.ceil(#state.album / 6))
+    local focusFrame
     for i = (page - 1) * 6 + 1, math.min(page * 6, #state.album) do
         local a = state.album[i]; local c, v = Logic.character(a.characterId), Logic.variant(a.variantId)
         local photo = UI.frame(scroll, "Selfie_" .. i, UDim2.fromOffset(0, 0), UDim2.fromOffset(280, photoHeight), Color3.fromRGB(255, 255, 251), 15); photo.LayoutOrder = i
         UI.stroke(photo, C.ink, 0).Thickness = 3
+        if a.key==callbacks.focusKey then
+            UI.stroke(photo,C.pink,0).Thickness=3
+            photo:SetAttribute("Focused",true)
+            focusFrame=photo
+        end
         local art = UI.frame(photo, "Photo", UDim2.fromOffset(10, 10), UDim2.new(1, -20, 0, artHeight), C.aqua, 1)
         callbacks.mount(art, c.id, v.id, { scene = true, photo = true, pair = true, locationId = a.locationId or "park", userId = a.avatarUserId or state.playerUserId, avatarSnapshot = a.avatarSnapshot, photoPose = a.photoPose })
         PhotoFrame.mount(art,a)
@@ -106,5 +112,6 @@ function Album.render(body, state, mobile, page, callbacks)
         UI.button(body, "NextAlbum", "→", UDim2.fromOffset(pager.nextX, pager.y), UDim2.fromOffset(pager.size, pager.size), C.card, function() callbacks.page(math.min(math.ceil(#state.album / 6), page + 1)) end)
         UI.label(body, "PageNumber", page .. " / " .. math.ceil(#state.album / 6), UDim2.fromOffset(pager.labelX, pager.y), UDim2.new(1, -pager.labelX, 0, pager.size), UI.readableSize(14, 10), C.muted)
     end
+    return {page=page,focusFrame=focusFrame}
 end
 return Album

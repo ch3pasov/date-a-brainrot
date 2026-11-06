@@ -39,6 +39,7 @@ local changed = net:WaitForChild("Changed")
 local C = UI.colors
 local state = { swipes = {}, matches = {}, album = {}, pending = 0, totalLikes = 0, totalPasses = 0, feed = {} }
 local activeTab, activeGame, currentCard, modal = "feed", nil, nil, nil
+local albumPage,albumFocusKey,albumFocusTarget=1,nil,nil
 local modalViewer = nil
 local modalRebuild, restoringModal = nil, false
 local busy, inputStart, dragDistance = false, nil, 0
@@ -302,10 +303,16 @@ local function closeModal()
     if modalViewer then modalViewer.dispose(); modalViewer = nil end
     if modal then modal:Destroy(); modal = nil end
 end
-local function nav(tab)
+local function nav(tab,photoKey)
     if not profileReady then return end
     if busy or swiping or gameInputLocked then return end
     if activeGame then rpc("cancelGame"); activeGame = nil end
+    albumFocusKey=nil
+    if tab=="album" and photoKey then
+        for index,photo in state.album do
+            if photo.key==photoKey then albumPage=math.ceil(index/6);albumFocusKey=photoKey;break end
+        end
+    end
     closeModal(); activeTab = tab; render()
 end
 local function buildShell()
@@ -573,10 +580,9 @@ local function renderMatches()
         filter = function(value) inboxFilter = value; listPage = 1; render() end,
         page = function(value) listPage = value; render() end,
         feed = function() nav("feed") end,
-        open = function(key, stage) if stage > 3 then nav("album"); showStory(key) else startGame(key) end end,
+        open = function(key, stage) if stage > 3 then nav("album",key); showStory(key) else startGame(key) end end,
     })
 end
-local albumPage = 1
 showGuide = function()
     if busy or swiping or gameInputLocked then return end
     closeModal()
@@ -585,13 +591,18 @@ showGuide = function()
 end
 actions.guide = showGuide
 local function renderAlbum()
-    Album.render(body, state, mobile, albumPage, {
+    local location=Album.render(body, state, mobile, albumPage, {
+        focusKey=albumFocusKey,
         mount = mount,
         matches = function() nav("matches") end,
-        page = function(value) albumPage = value; render() end,
+        page = function(value) albumFocusKey=nil; albumPage = value; render() end,
         open = function(key) showStory(key) end,
         ideas = function() showIdeas() end,
     })
+    if location then
+        albumPage=location.page
+        albumFocusTarget=location.focusFrame
+    end
 end
 showIdeas = function(scrollPosition)
     closeModal();modalRebuild=function()showIdeas(scrollPosition)end
@@ -735,10 +746,10 @@ showResult = function(result, key, completedStage, completedLocation, scrollPosi
         mount = function(art, options) modalViewer = mount(art, character.id, match.variantId, options) end,
         editPhoto = function(frameId)
             if busy then return end
-            nav("album");showPhotoStudio(key,{frameId=frameId})
+            nav("album",key);showPhotoStudio(key,{frameId=frameId})
         end,
-        back = function() closeModal(); if result.remixId then nav("album"); showRemixes(key) elseif result.practice then nav("album"); showStory(key) else nav("matches") end end,
-        continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album") else startGame(key) end end,
+        back = function() closeModal(); if result.remixId then nav("album",key); showRemixes(key) elseif result.practice then nav("album",key); showStory(key) else nav("matches") end end,
+        continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album",key) else startGame(key) end end,
     })
     if not restoringModal then
         Feedback.pop(box, .92); Feedback.play(result.passed and "success" or "miss")
@@ -872,8 +883,8 @@ renderGame = function(updateOnly)
     local back = UI.button(focused and header or body, "Back", focused and "←" or (session.practice and "←  К истории" or "←  Назад"), UDim2.fromOffset(0, 0), UDim2.fromOffset(focused and settingsSize or (mobile and 145 or 178), focused and settingsSize or 54), C.panel, function()
         if busy or gameInputLocked then return end
         rpc("cancelGame"); activeGame = nil
-        if session.remixId then nav("album"); showRemixes(session.key)
-        elseif session.practice then nav("album"); showStory(session.key) else render() end
+        if session.remixId then nav("album",session.key); showRemixes(session.key)
+        elseif session.practice then nav("album",session.key); showStory(session.key) else render() end
     end)
     if focused then
         back.TextSize = 30
@@ -906,7 +917,7 @@ render = function(preserveModal)
         local list = body:FindFirstChild("AlbumGrid") or body:FindFirstChild("MatchList")
         if list then scrollPositions[renderedListKey] = list.CanvasPosition end
     end
-    inputStart = nil; dragDistance = 0
+    inputStart = nil; dragDistance = 0; albumFocusTarget=nil
     cleanup(); closeModal(); toastFrame = nil
     buildShell()
     if not profileReady then renderLoadScreen(); return end
@@ -920,9 +931,20 @@ render = function(preserveModal)
         local list = body:FindFirstChild(activeTab == "album" and "AlbumGrid" or "MatchList")
         local key = activeTab == "album" and ("album:" .. albumPage) or ("matches:" .. inboxFilter .. ":" .. listPage)
         if list then renderedListKey = key end
-        if list and scrollPositions[key] then
+        local focus=activeTab=="album" and albumFocusTarget
+        local focusKey=albumFocusKey
+        if list and (focus or scrollPositions[key]) then
             local saved = scrollPositions[key]
-            task.defer(function() task.wait(); if list.Parent then list.CanvasPosition = saved end end)
+            task.defer(function()
+                task.wait()
+                if not list.Parent then return end
+                if focus and focus.Parent==list then
+                    local target=list.CanvasPosition.Y+focus.AbsolutePosition.Y-list.AbsolutePosition.Y
+                    local maximum=math.max(0,list.AbsoluteCanvasSize.Y-list.AbsoluteWindowSize.Y)
+                    list.CanvasPosition=Vector2.new(0,math.clamp(target,0,maximum))
+                    if albumFocusKey==focusKey then albumFocusKey=nil end
+                elseif saved then list.CanvasPosition=saved end
+            end)
         end
     end
     gui:SetAttribute("ActiveTab", activeTab)
