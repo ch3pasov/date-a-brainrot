@@ -285,15 +285,20 @@ test("Real server long remix completes six inputs, saves one reward and recovers
         local result = f.invoke(f.a,"gameInput",args)
         if i < 6 then
             assert(result.score == nil and result.total == 6 and result.sequence == nil)
+            assert(result.recap==nil and result.dateReview==nil)
             assert(f.invoke(f.a,"gameInput",args).resynced and session.step == i+1)
         else
             assert(result.result == "remix" and result.unlocked and result.passed and result.score == 1 and result.recap.total == 6)
             assert(result.locationId == "rooftop" and result.remixId == "long")
+            assert(result.recap.dateReview.locationId=="rooftop" and not result.recap.dateReview.reversed)
+            assert(encoded(result.recap.dateReview.expected)==encoded(session.sequence))
+            assert(encoded(result.recap.dateReview.choices)==encoded(session.choices))
             finalArgs = args
         end
     end
     assert(f.invoke(f.a,"gameInput",finalArgs).error == "expired_game")
     local snapshot = f.invoke(f.a,"snapshot")
+    assert(not encoded(snapshot):find("dateReview",1,true))
     assert(snapshot.album[1].remixScores["rooftop:long"] == 1 and snapshot.album[1].locationId == "park")
     assert(snapshot.album[1].scores["3"] == 1 and snapshot.matches[1].stage == 4)
     f.drain()
@@ -308,7 +313,10 @@ test("Real server reverse mode uses the opposite order and a cancelled remix gra
     for i = 1, 4 do
         local result = f.invoke(f.a,"gameInput",{token=view.token,turn=i,choice=sequence[5-i]})
         assert(result.good)
-        if i == 4 then assert(result.unlocked and result.score == 1) end
+        if i == 4 then
+            assert(result.unlocked and result.score == 1 and result.recap.dateReview.reversed)
+            for j=1,4 do assert(result.recap.dateReview.expected[j]==sequence[5-j])end
+        end
     end
     view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="park"})
     view = f.invoke(f.a,"readyGame",{token=view.token})

@@ -5,6 +5,7 @@ local Album = require(script.Parent.Album)
 local RemixResult = require(script.Parent.RemixResult)
 local Sticker = require(script.Parent.SouvenirSticker)
 local PhotoFrame = require(script.Parent.PhotoFrame)
+local DateReview = require(script.Parent.DateReview)
 local UI = require(script.Parent.UI)
 local C = UI.colors
 local Result = {}
@@ -112,6 +113,7 @@ function Result.mount(parent, result, options)
         description=("Нужны %s: %d из %d. Можно повторить — мэтч остаётся с тобой."):format(goal,required,total)
     end
     y+=text(content,"Description",description,0,y,usableW,font,C.muted)+16
+    y+=DateReview.mount(content,result.recap,usableW,y)
     content.CanvasSize=UDim2.fromOffset(0,y)
     content.CanvasPosition=options.scrollPosition or Vector2.new(0,0)
     if options.scrolled then content:GetPropertyChangedSignal("CanvasPosition"):Connect(function() options.scrolled(content.CanvasPosition) end) end

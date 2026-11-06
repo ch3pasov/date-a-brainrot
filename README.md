@@ -46,7 +46,11 @@ remain preferred. The fallback needs no meshes, textures, or animation assets.
 Quiet feedback now also stops portrait rotation, decorative orbits, and animation
 tracks. Hidden portraits pause tracks; resuming live feedback restores movement.
 
-365 offline checks and both source builds pass. New UI geometry and actions are
+Completed dates with mistakes now compare the planned items against your choices.
+Reverse rounds show the reversed answer order explicitly; perfect rounds omit the
+review. It is result-only and does not change saved scores or rewards.
+
+368 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 

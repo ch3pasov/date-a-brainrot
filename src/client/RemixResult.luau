@@ -3,6 +3,7 @@ local Remix = require(Shared.DateRemix)
 local Locations = require(Shared.Locations)
 local UI = require(script.Parent.UI)
 local Icons = require(script.Parent.ToyIcons)
+local DateReview = require(script.Parent.DateReview)
 local C = UI.colors
 local Result = {}
 function Result.mount(parent, result, options)
@@ -47,7 +48,9 @@ function Result.mount(parent, result, options)
     text("Score", ("%d%% · рекорд %d%%"):format(math.floor(result.score * 100 + .5), math.floor(result.best * 100 + .5)), y + line + 16, 1, C.ink, true)
     text("Rule", ("%s · %s\nНужно %d из %d. Ошибаться можно."):format(Locations.get(result.locationId).short, mode.name, mode.required, mode.total), y + line * 2 + 24, 3, C.muted)
     text("CollectionProgress", (owned and "✓ Сувенир в коллекции" or "Сувенир ждёт удачного раунда") .. ("\nСобрано %d / %d"):format(progress.collected, progress.total), y + line * 5 + 30, 2, C.ink, true)
-    scroll.CanvasSize = UDim2.fromOffset(0, y + line * 7 + 44)
+    local bottom = y + line * 7 + 44
+    bottom += DateReview.mount(scroll,result.recap,w-68,bottom)
+    scroll.CanvasSize = UDim2.fromOffset(0, bottom)
     scroll.CanvasPosition = options.scrollPosition or Vector2.new(0, 0)
     if options.scrolled then scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function() options.scrolled(scroll.CanvasPosition) end) end
     local back = UI.button(box, "BackToMatches", "Сувениры", UDim2.fromOffset(24, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.card, options.back)

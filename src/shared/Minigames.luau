@@ -154,6 +154,17 @@ end
 function Games.turn(session)
     return session.stage == 2 and session.attempts + 1 or session.step
 end
+function Games.recap(session)
+    local total = session.total or (session.stage == 2 and 6 or 4)
+    local recap = { hits = table.clone(session.hits), total = total }
+    if session.stage == 3 and #session.choices == total and session.step > total then
+        local expected = {}
+        for i = 1, total do expected[i] = Remix.answer(session.sequence, session.remixId, i) end
+        recap.dateReview = { expected = expected, choices = table.clone(session.choices), locationId = session.locationId,
+            reversed = session.remixId == "reverse" }
+    end
+    return recap
+end
 function Games.applyInput(session, args, now)
     if not session or args.token ~= session.token then return { error = "expired_game" } end
     if session.awaitingReady then return { error = "ready_first" } end

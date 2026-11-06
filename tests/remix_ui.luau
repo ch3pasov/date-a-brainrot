@@ -13,7 +13,8 @@ local function fixture(width, height)
     local h = Harness.new(width, height)
     local icons = h.module("src/client/ToyIcons.luau")
     h.board = h.module("src/client/RemixBoard.luau", {Remix=Remix, Locations=Locations, Icons=icons})
-    h.result = h.module("src/client/RemixResult.luau", {Remix=Remix, Locations=Locations, Icons=icons})
+    local review=h.module("src/client/DateReview.luau",{Locations=Locations})
+    h.result = h.module("src/client/RemixResult.luau", {Remix=Remix, Locations=Locations, Icons=icons,DateReview=review})
     return h
 end
 local rect = Harness.rect
@@ -65,7 +66,7 @@ test("Remix result remains scrollable and its fixed actions do not overlap on sh
         local f = fixture(screen[1],screen[2]); local options = f.options()
         options.photo={remixScores={["park:reverse"]=.75}}; options.back=function() end; options.continue=function() end
         local result=f.result.mount(f.root,{remixId="reverse",locationId="park",score=.75,best=.75,passed=true,unlocked=true,
-            recap={hits={true,true,false,true},total=4}},options)
+            recap={hits={true,true,false,true},total=4,dateReview={expected={4,3,2,1},choices={4,3,3,1},locationId="park",reversed=true}}},options)
         local w,h=result.Size.X.Offset,result.Size.Y.Offset
         local content=rect(result.RemixResultContent,w,h)
         local back,again=rect(result.BackToMatches,w,h),rect(result.ResultContinue,w,h)
@@ -73,6 +74,8 @@ test("Remix result remains scrollable and its fixed actions do not overlap on sh
         for _,button in {back,again} do assert(button.h*f.logical.scale>=44 and button.y+button.h<=h) end
         local note=rect(result.RemixResultContent.CollectionProgress,content.w,content.h)
         assert(note.y+note.h<=result.RemixResultContent.CanvasSize.Y.Offset)
+        local review=rect(result.RemixResultContent.DateReview,content.w,content.h)
+        assert(review.y>=note.y+note.h+8 and review.y+review.h<=result.RemixResultContent.CanvasSize.Y.Offset)
         assert(result.Title.Text=="НОВЫЙ СУВЕНИР!")
     end
 end)

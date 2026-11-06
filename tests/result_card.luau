@@ -18,7 +18,8 @@ local function fixture(width,height,stage,passed,practice)
     local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=Remix,Icons=icons})
     local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
     local album=f.module("src/client/Album.luau",{Collection=Collection,Locations=Locations})
-    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Album=album,Sticker=sticker,PhotoFrame=frame})
+    local review=f.module("src/client/DateReview.luau",{Locations=Locations})
+    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Album=album,Sticker=sticker,PhotoFrame=frame,DateReview=review})
     local options=f.options();options.stage=stage
     options.character={name="Trippi Troppi Troppa Trippa",personality="food"}
     options.photo={locationId="rooftop",visitedLocations={park=true,cafe=true},avatarUserId=42,avatarSnapshot={saved=true},remixScores={["park:long"]=1},pinnedSouvenir="park:long",photoPose="heart",photoFrame="travel"}
@@ -27,8 +28,10 @@ local function fixture(width,height,stage,passed,practice)
     options.scrollPosition=roblox.Vector2.new(0,120);options.scrolled=function(position)f.scrolled=position end
     local total=stage==2 and 6 or 4;local hits={}
     for i=1,total do hits[i]=passed or i%2==0 end
+    local recap={hits=hits,total=total}
+    if stage==3 then recap.dateReview={expected={1,2,3,4},choices={2,2,4,4},locationId="rooftop"}end
     f.box=result.mount(f.root,{score=passed and 1 or .5,best=1,passed=passed,practice=practice,improved=practice and passed,
-        result=stage==3 and passed and "album" or "next",recap={hits=hits,total=total},
+        result=stage==3 and passed and "album" or "next",recap=recap,
         response="Мой карандаш назначен директором нелепостей. Первый шедевр уже готов — он немного споткнулся, зато улыбается."},options)
     f.photo=options.photo;f.total=total
     return f
@@ -54,6 +57,10 @@ test("Actual result keeps every block ordered inside a scrollable body and fixed
                 assert(r.x>=0 and r.x+r.w<=view.w)
             end
             assert(previous+8<=content.CanvasSize.Y.Offset)
+            if stage==3 and not passed then
+                local review=rect(content.DateReview,view.w,view.h)
+                assert(review.y>=previous+8 and review.y+review.h<=content.CanvasSize.Y.Offset)
+            else assert(not content.DateReview)end
             for i=1,f.total do
                 local expected=(passed or i%2==0) and "♥" or "×"
                 assert(content["ResultAttempt_"..i].Mark.Text==expected)

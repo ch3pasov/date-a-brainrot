@@ -162,7 +162,7 @@ local function gameView(session)
 end
 local function finish(player, session, score)
     games[player] = nil
-    local recap = { hits = table.clone(session.hits), total = session.total or (session.stage == 2 and 6 or 4) }
+    local recap = Games.recap(session)
     if session.remixId then
         local ok, result = Logic.finishRemix(profiles[player], session.key, session.locationId, session.remixId, score)
         if not ok then return { error = result } end
