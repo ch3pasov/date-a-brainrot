@@ -58,10 +58,15 @@ local function shuffler(seed)
 end
 local function mix(q, draw)
     local options = {}
-    for i, text in q.options do options[i] = { text = text, good = i == q.best } end
+    for i, text in q.options do options[i] = { text = text, good = i == q.best, reply = q.replies and q.replies[i] } end
     for i = #options, 2, -1 do local j = draw(i); options[i], options[j] = options[j], options[i] end
     local out = { prompt = q.prompt, options = {}, response = q.response }
-    for i, option in options do out.options[i] = option.text; if option.good then out.best = i end end
+    if q.replies then out.replies={} end
+    for i, option in options do
+        out.options[i] = option.text
+        if option.good then out.best = i end
+        if out.replies then out.replies[i]=option.reply end
+    end
     return out
 end
 function Games.chatFor(character, seed)
@@ -162,7 +167,7 @@ function Games.applyInput(session, args, now)
     if session.stage == 1 then
         local q = session.chat[session.step]
         good = index == q.best
-        response = good and q.response or Games.chatMiss(session.personality, session.step)
+        response = q.replies and q.replies[index] or (good and q.response or Games.chatMiss(session.personality, session.step))
         table.insert(session.messages, { from = "npc", text = q.prompt })
         table.insert(session.messages, { from = "player", text = q.options[index] })
         table.insert(session.messages, { from = "npc", text = response })

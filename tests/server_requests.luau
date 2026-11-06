@@ -363,6 +363,26 @@ test("Readiness cannot start a different player's round, an expired token or a c
     assert(f.invoke(f.b,"readyGame",{token=chat.token}).error=="invalid_stage")
     assert(encoded(f.api.game(f.b))==before)
 end)
+test("Personal wrong-answer quips appear once in the real chat transcript without exposing the answer key",function()
+    local f=fixture();local key=f.match(f.a)
+    local view=f.invoke(f.a,"startGame",{key=key});local session=f.api.game(f.a);local quips=0
+    for turn=1,4 do
+        assert(view.replies==nil and view.best==nil)
+        local q=session.chat[turn]
+        local choice=q.replies and q.best%3+1 or q.best
+        local result=f.invoke(f.a,"gameInput",{token=view.token,turn=turn,choice=choice})
+        if q.replies then
+            quips+=1;assert(not result.good and result.response==q.replies[choice] and result.response~=q.response)
+            assert(session.messages[#session.messages].text==result.response)
+        else assert(result.good) end
+        if turn<4 then
+            local count=#session.messages
+            assert(f.invoke(f.a,"gameInput",{token=view.token,turn=turn,choice=choice}).resynced)
+            assert(#session.messages==count);view=result
+        else assert(result.passed and result.score==.75 and result.result=="next_stage") end
+    end
+    assert(quips==1 and f.profiles[f.a].matches[key].stage==2)
+end)
 test("Photo style requests save once, reject locked frames and isolate different players",function()
     local f=fixture();local key=completedStory(f)
     local revision=f.profiles[f.a].revision

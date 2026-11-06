@@ -3,7 +3,7 @@
 local function moment(prompt, good, other, wild, response)
     return { prompt=prompt, options={good,other,wild}, best=1, response=response }
 end
-return {
+local Moments = {
     ["tung-tung-tung-sahur"] = moment(
         "Научился стучать совсем тихо. Теперь даже мой будильник меня не слышит.",
         "Назовём это акустическим концертом для подушки.", "Нужно разбудить весь район, чтобы проверить.", "Пусть подушка сначала купит билет.",
@@ -141,3 +141,9 @@ return {
         "Заведём новую папку: «Нелепо, но очень хорошо».", "Нужно срочно сделать разговор максимально неловким.", "Пусть папка сама выбирает нам настроение.",
         "Первая запись готова. Название длинное, улыбка ещё длиннее."),
 }
+local Quips = if script then require(script.Parent.CharacterQuips) else require("./CharacterQuips")
+for id,entry in Moments do
+    local replies=Quips[id]
+    entry.replies={entry.response,replies[1],replies[2]}
+end
+return Moments
