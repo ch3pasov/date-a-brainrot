@@ -11,7 +11,7 @@ local function test(name,fn)
     local ok,err=pcall(fn);table.insert(tests,{name=name,passed=ok,error=ok and nil or tostring(err)})
     assert(ok,name..": "..tostring(err))
 end
-local function fixture(motion,animated,variant)
+local function fixture(motion,animated,variant,aim)
     local f={time=10,feedback={motionEnabled=motion},objects={},delays={},preloads=0}
     local function instance(class)
         local props={ClassName=class,Name=class,children={},attrs={},Visible=true,ClipsDescendants=false,
@@ -52,7 +52,7 @@ local function fixture(motion,animated,variant)
         task={spawn=function(fn)fn()end,wait=function()end,delay=function(_,fn)table.insert(f.delays,fn)end}}
     local Viewer=luau.load(source:sub(first),{environment=env})()
     f.parent=instance("Frame")
-    f.api=Viewer.mount(f.parent,{id="toy",modelName="Toy"},{id=variant or "cosmic"})
+    f.api=Viewer.mount(f.parent,{id="toy",modelName="Toy",cameraAim=aim},{id=variant or "cosmic"})
     f.camera=f.api.viewport.CurrentCamera
     f.stars={};for _,object in f.objects do if object.Name=="AuthoredVariantSpark"then table.insert(f.stars,object)end end
     function f.step(count)
@@ -99,6 +99,12 @@ test("Animation tracks respect quiet mode and visibility, including delayed gree
     f.feedback.motionEnabled=false;f.parent.Visible=true;f.step()
     assert(f.tracks.idle.speed==0 and f.tracks.greeting.speed==0)
     f.feedback.motionEnabled=true;f.step();assert(f.tracks.idle.speed==1 and f.tracks.greeting.speed==1)
+end)
+test("Toy portraits use their own framing while supplied models retain authored camera offsets",function()
+    local low=fixture(false,false,"classic",.22);local high=fixture(false,false,"classic",.62)
+    assert(low.camera.CFrame==high.camera.CFrame)
+    local authoredLow=fixture(false,true,"classic",.22);local authoredHigh=fixture(false,true,"classic",.62)
+    assert(authoredLow.camera.CFrame~=authoredHigh.camera.CFrame)
 end)
 test("Disposed portraits disconnect and ignore frames or delayed greetings",function()
     local f=fixture(true,true);f.api.greet();f.api.dispose();f.api.dispose()

@@ -133,12 +133,11 @@ function Scene.mount(parent, character, variant, options)
     local camera = Instance.new("Camera"); camera.Name = "SceneCamera"; camera.FieldOfView = options.photo and 42 or 39; camera.Parent = viewport; viewport.CurrentCamera = camera
     local pair = options.pair or options.photo
     local photoPose = PhotoStyle.pose(options.photoPose) or PhotoStyle.poses[1]
-    local model, npcBase, npcHeight, npcWidth, npcDepth, npcShadow, playerShadow
+    local model, fallback, npcBase, npcHeight, npcWidth, npcDepth, npcShadow, playerShadow
     local loadingDots = {}
     local loadingLabel
     local arms = {}
     if character and not options.onlyPlayer then
-        local fallback
         model,fallback = FallbackFigure.obtain(assets.Models,character,variant)
         if model then
             model.Name = "BrainrotFigure"
@@ -225,12 +224,13 @@ function Scene.mount(parent, character, variant, options)
         if npcWidth and not pair then distance = math.max(distance, npcWidth / (2 * tangent * math.max(aspect, .1)) + npcDepth * .25 + 1) end
         if pair then distance = math.max(distance, 4.8 / (math.tan(math.rad(camera.FieldOfView * .5)) * math.max(aspect, .1)) + 1) end
         local portrait = options.portrait and not pair and not options.interactive and npcHeight ~= nil
-        local portraitFocus = options.portraitAim and math.clamp(options.portraitAim, .34, .65) or .53
+        local authoredAim = not fallback and options.portraitAim
+        local portraitFocus = authoredAim and math.clamp(authoredAim, .34, .65) or .53
         if portrait then
             -- A reaction card needs the cast, rather than a distant establishing
             -- shot. Thin figures fill its height; long creatures retain their
             -- width. The face/body stays central while posed arms may reach out.
-            local heightRatio = options.portraitAim and math.min(portraitFocus * 2, 1) or 1
+            local heightRatio = authoredAim and math.min(portraitFocus * 2, 1) or 1
             distance = npcHeight * heightRatio / (2 * tangent) * 1.06 + npcDepth * .5
             if options.keepPortraitWidth or npcWidth > npcHeight * 1.3 then
                 distance = math.max(distance, npcWidth / (2 * tangent * math.max(aspect, .1)) * 1.06 + npcDepth * .5)

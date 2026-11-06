@@ -50,7 +50,7 @@ Completed dates with mistakes now compare the planned items against your choices
 Reverse rounds show the reversed answer order explicitly; perfect rounds omit the
 review. It is result-only and does not change saved scores or rewards.
 
-368 offline checks and both source builds pass. New UI geometry and actions are
+370 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 

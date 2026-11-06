@@ -54,7 +54,7 @@ local function fixture(options,width,height)
     f.api=luau.load("local perspective=0\n" .. cameraSource .. [[
         return {update=cameraUpdate,setPerspective=function(value) perspective=value end,layout=function() return itemLayout end}
     ]],{debugName="SceneViewer camera under test",environment={
-        options=options,viewport=f.viewport,camera=f.camera,pair=options.pair or options.photo,
+        options=options,viewport=f.viewport,camera=f.camera,pair=options.pair or options.photo,fallback=options.fallback,
         npcDepth=options.npcDepth or 5,npcWidth=options.npcWidth or 6,npcHeight=options.npcHeight or 5.15,DateItemLayout=DateItemLayout,items=f.items,
         figure=f.figure,model=f.npc,npcBase=f.npc and f.npc.frame,
         playerShadow=f.playerShadow,npcShadow=f.npcShadow,
@@ -217,6 +217,15 @@ test("A long creature keeps its full width in a narrow reaction portrait",functi
     local maxX,lowY,highY=projectedBounds(f,8.5,3,2)
     assert(maxX<1 and lowY>=-1 and highY<=1)
     assert(maxX>.8)
+end)
+test("Fallback toys keep head and feet in portraits instead of inheriting imported model offsets",function()
+    for _,aim in {.22,.62}do for _,screen in {{140,186},{400,203},{110,235}}do
+        local f=fixture({portrait=true,keepPortraitWidth=true,fallback=true,portraitAim=aim,npcWidth=2.9,npcHeight=5.7,npcDepth=2.3},screen[1],screen[2])
+        f.api.update()
+        local maxX,lowY,highY=projectedBounds(f,2.9,5.7,2.3)
+        assert(maxX<1 and lowY>=-1 and highY<=1)
+        assert(math.abs(f.target.Y-5.7*.53)<1e-5)
+    end end
 end)
 test("Lower authored framing preserves conservative head room despite spare imported space",function()
     local f=fixture({portrait=true,portraitAim=.22,npcWidth=5.7,npcHeight=5.7,npcDepth=1.5},140,186)

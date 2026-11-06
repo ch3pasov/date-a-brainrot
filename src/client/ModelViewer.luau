@@ -22,7 +22,7 @@ function Viewer.mount(parent, character, variant, options)
     local base = model:GetPivot()
     local camera = Instance.new("Camera"); camera.FieldOfView = options.small and 33 or 32
     local distance = options.small and 13 or 12
-    local aim = character.cameraAim or 0.35
+    local aim = fallback and .53 or (character.cameraAim or 0.35)
     local perspective, targetPerspective = 0, 0
     local cameraPerspective
     local function updateCamera()
