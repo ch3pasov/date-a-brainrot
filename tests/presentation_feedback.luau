@@ -20,11 +20,14 @@ local function test(name, callback)
     table.insert(tests, { name = name, passed = ok, error = ok and nil or tostring(err) })
     assert(ok, name .. ": " .. tostring(err))
 end
-local function fixture(stage, turn, previous)
-    local session = { token = "round", stage = stage, attempts = turn - 1, step = turn, hits = {}, choices = {} }
-    for i = 1, turn - 1 do session.hits[i] = i % 2 == 1; session.choices[i] = 1 end
+local function fixture(stage, turn, previous, total, priorHits)
+    local session = { token = "round", stage = stage, attempts = turn - 1, step = turn, hits = {}, choices = {}, total = total }
+    for i = 1, turn - 1 do
+        if priorHits then session.hits[i] = priorHits[i] else session.hits[i] = i % 2 == 1 end
+        session.choices[i] = 1
+    end
     local f = { session = session, slots = {}, pops = 0, acts = 0, flashes = 0, collections = 0, prompt = {} }
-    for i = 1, stage == 2 and 6 or 4 do
+    for i = 1, total or (stage == 2 and 6 or 4) do
         local slot = { Mark = {}, UIStroke = {}, attributes = {} }
         function slot:SetAttribute(name, value) self.attributes[name] = value end
         f.slots["Round" .. i] = slot
@@ -42,6 +45,8 @@ local function fixture(stage, turn, previous)
     local environment = {
         initial = session, row = row, scene = scene, text = f.prompt,
         previousCollection = previous, DateCollection = DateCollection,
+        Vibe = require("../src/shared/RoundVibe"), character = {personality="humor"},
+        root = {SetAttribute = function(_, key, value) if key == "AnswerStreak" then f.streak = value end end},
         C = { panel = "panel", muted = "muted", purple = "purple", mint = "mint", card = "card" },
         Locations = { gestures = { { id = "wave" }, { id = "heart" }, { id = "dance" } } },
         Color3 = { fromRGB = function(r, g, b) return tostring(r) .. ":" .. g .. ":" .. b end },
@@ -201,5 +206,22 @@ test("Every date venue uses the full play area and retains feedback and settings
     end end
 end)
 
+test("Sixth date confirmation preserves both the streak and sixth miniature across resize", function()
+    local before=fixture(3,6,nil,6,table.create(5,true))
+    before.controller.react(2,true)
+    assert(before.streak==6 and before.prompt.Text:find("6 подряд",1,true))
+    assert(#DateCollection.entries(before.collected)==6 and before.slots.Round6.Mark.Text=="♥")
+    local after=fixture(3,6,before.collected,6,table.create(5,true))
+    after.controller.restoreReaction(before.controller.state())
+    assert(after.streak==6 and after.prompt.Text==before.prompt.Text and after.pops==0 and after.acts==0)
+    assert(#DateCollection.entries(after.collected)==6 and after.slots.Round6.Mark.Text=="♥")
+end)
+test("A confirmed miss clears the live streak without erasing earlier correct answers", function()
+    local f=fixture(2,3)
+    f.session.hits={true,true}
+    f.controller.react(1,false)
+    assert(f.streak==0 and not f.prompt.Text:find("подряд",1,true))
+    assert(f.slots.Round1.Mark.Text=="♥" and f.slots.Round2.Mark.Text=="♥" and f.slots.Round3.Mark.Text=="×")
+end)
 fs.writeFile("prototype/evidence/presentation-feedback-tests.json", serde.encode("json", { passed = #tests, tests = tests }, true))
 print("Passed " .. #tests .. " presentation feedback tests")

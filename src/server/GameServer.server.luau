@@ -198,6 +198,11 @@ local function handle(player, action, args)
         local ok, err = Logic.setPreferences(p, args)
         if not ok then return { error = err } end
         return payload(player)
+    elseif action == "pinSouvenir" then
+        if type(args.key) ~= "string" then return { error = "invalid_request" } end
+        local ok, err = Logic.pinSouvenir(p, args.key, args.souvenirId)
+        if not ok then return { error = err } end
+        return payload(player)
     elseif action == "swipe" then
         if type(args.characterId) ~= "string" or type(args.variantId) ~= "string" or type(args.liked) ~= "boolean" then return { error = "invalid_request" } end
         local ok, result = Logic.swipe(p, args.characterId, args.variantId, args.liked, clock(player), { acceptance = random:NextNumber(), timing = random:NextNumber(), delay = random:NextNumber() })
@@ -274,7 +279,7 @@ request.OnServerInvoke = function(player, action, args)
     busy[player] = nil
     local current = profiles[player]
     if current and (current ~= previous or current.revision ~= revision) then
-        requestSave(player, ok and response and (response.score ~= nil or action == "preferences") and 0 or 6)
+        requestSave(player, ok and response and (response.score ~= nil or action == "preferences" or action == "pinSouvenir") and 0 or 6)
     end
     if not ok then warn("Prototype request failed: " .. tostring(response)); return { error = "server_error" } end
     return response

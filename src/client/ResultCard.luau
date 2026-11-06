@@ -3,6 +3,7 @@ local Config = require(Shared.Config)
 local Locations = require(Shared.Locations)
 local Album = require(script.Parent.Album)
 local RemixResult = require(script.Parent.RemixResult)
+local Sticker = require(script.Parent.SouvenirSticker)
 local UI = require(script.Parent.UI)
 local C = UI.colors
 local Result = {}
@@ -39,6 +40,7 @@ function Result.mount(parent, result, options)
             userId = options.photo and options.photo.avatarUserId,
             avatarSnapshot = options.photo and options.photo.avatarSnapshot,
         })
+        Sticker.mount(art, options.photo)
         local caption = UI.label(photo, "PhotoCaption", Locations.get(locationId).name .. "  ♥", UDim2.fromOffset(8, 246 - compression), UDim2.new(1, -16, 0, 32), UI.readableSize(17), C.pink, true)
         caption.TextXAlignment = Enum.TextXAlignment.Center
         local tape = UI.frame(photo, "PhotoTape", UDim2.new(.5, -42, 0, -7), UDim2.fromOffset(84, 18), C.yellow, 1)

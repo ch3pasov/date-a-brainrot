@@ -20,7 +20,7 @@ local function resume(thread,...)
     return table.unpack(result,2,result.n)
 end
 local function fixture(stage,practice)
-    local f = {now=100,requests={},sounds={},renders=0,updates=0,completed={},stories={},toasts={},closed=0,news=0}
+    local f = {now=100,requests={},sounds={},renders=0,updates=0,completed={},stories={},remixes={},toasts={},closed=0,news=0}
     f.initial = {token="round",key="friend:classic",stage=stage or 2,step=1,attempts=0,practice=practice==true}
     function f.presentation()
         local view = {previews={},cleared=0,reactions={},locks={}}
@@ -45,6 +45,7 @@ local function fixture(stage,practice)
         closeModal=function() f.closed+=1 end,
         render=function() f.renders+=1 end,
         showStory=function(key) table.insert(f.stories,key) end,
+        showRemixes=function(key) table.insert(f.remixes,key) end,
         toast=function(message,color) table.insert(f.toasts,{message=message,color=color}) end,
         notifyMatches=function(news) f.news+=1; f.lastNews=news end,
     }
@@ -153,5 +154,15 @@ test("A slow chat response adds no artificial reaction delay",function()
     assert(f.client.state().game==nextTurn and not f.client.state().locked)
 end)
 
+test("A lost final remix reply refreshes rewards and returns directly to souvenirs",function()
+    local f=fixture(3,true);f.initial.remixId="long";f.initial.total=6;f.initial.step=6
+    local thread=f.start(2)
+    assert(resume(thread)=="rpc" and f.requests[1].args.turn==6)
+    assert(resume(thread,nil,"expired_game")=="delay")
+    assert(resume(thread)=="rpc")
+    resume(thread,{news={}})
+    assert(f.client.state().game==nil and f.client.state().tab=="album")
+    assert(#f.remixes==1 and f.remixes[1]==f.initial.key and #f.stories==0 and #f.completed==0)
+end)
 fs.writeFile("prototype/evidence/client-round-recovery-tests.json",serde.encode("json",{passed=#tests,tests=tests},true))
 print("Passed " .. #tests .. " client minigame recovery tests")

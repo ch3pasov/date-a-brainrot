@@ -22,8 +22,11 @@ test("Album keeps larger text, passport, goal and scroll area separate on compac
         local bodyW=l.mobile and 436 or l.width-52
         local bodyH=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
         local body=f.ui.frame(f.root,"Body",roblox.UDim2.fromOffset(0,0),roblox.UDim2.fromOffset(bodyW,bodyH))
-        local album=f.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty={}})
-        local photo={key=Catalog[1].id..":cosmic",characterId=Catalog[1].id,variantId="cosmic",locationId="cafe",scores={},remixScores={["cafe:long"]=1}}
+        local remix=require("../src/shared/DateRemix")
+        local icons=f.module("src/client/ToyIcons.luau")
+        local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=remix,Icons=icons})
+        local album=f.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty={},Sticker=sticker})
+        local photo={key=Catalog[1].id..":cosmic",characterId=Catalog[1].id,variantId="cosmic",locationId="cafe",scores={},remixScores={["cafe:long"]=1},pinnedSouvenir="cafe:long"}
         local opened
         album.render(body,{album={photo}},l.mobile,1,{mount=function() end,open=function(key)opened=key end})
         local title,description,counts,grid=rect(body.Title,bodyW,bodyH),rect(body.Description,bodyW,bodyH),rect(body.Count_classic,bodyW,bodyH),rect(body.AlbumGrid,bodyW,bodyH)
@@ -40,6 +43,9 @@ test("Album keeps larger text, passport, goal and scroll area separate on compac
             previous=r.y+r.h
         end
         assert(photoNode.OpenHint.Text:find("Парк",1,true))
+        local art=rect(photoNode.Photo,w,h);local pinned=rect(photoNode.Photo.PinnedSouvenir,art.w,art.h)
+        assert(pinned.x>=0 and pinned.y>=0 and pinned.x+pinned.w<=art.w and pinned.y+pinned.h<=art.h)
+        assert(photoNode.Photo.PinnedSouvenir:GetAttribute("SouvenirId")=="cafe:long")
         assert(body.Description.Text:find("Сувениров: 1",1,true))
         photoNode.OpenStory.action();assert(opened==photo.key)
     end

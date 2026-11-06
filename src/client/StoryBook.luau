@@ -5,6 +5,7 @@ local Remix = require(Shared.DateRemix)
 local UI = require(script.Parent.UI)
 local Icons = require(script.Parent.ToyIcons)
 local Album = require(script.Parent.Album)
+local Sticker = require(script.Parent.SouvenirSticker)
 local C = UI.colors
 local Book = {}
 
@@ -57,6 +58,7 @@ function Book.mount(parent, character, variant, photo, options)
         locationId = photo.locationId or "park", userId = photo.avatarUserId or options.userId,
         avatarSnapshot = photo.avatarSnapshot,
     })
+    Sticker.mount(art, photo)
     center(postcard, "PhotoLocation", Locations.get(photo.locationId).name, UDim2.new(0, 12, 1, -captionH - 8), UDim2.new(1, -24, 0, captionH), UI.readableSize(mobile and 16 or 20), C.ink, true)
     local tape = UI.frame(postcard, "Tape", UDim2.new(.5, -42, 0, -8), UDim2.fromOffset(84, 18), C.yellow, 1)
     tape.Rotation = -4; tape.BackgroundTransparency = .18; tape.ZIndex = 3

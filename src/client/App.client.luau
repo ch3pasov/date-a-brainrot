@@ -154,6 +154,8 @@ local errors = {
     session_expired = "Связь с сохранением потеряна. Ждём восстановления.",
     server_error = "Не получилось. Попробуй ещё раз.", memorize_first = "Сначала запомни последовательность.",
     expired_game = "Начни эту мини-игру ещё раз.",
+    story_not_complete = "Сначала завершите вашу историю.", invalid_remix = "Выбери один из доступных ремиксов.",
+    souvenir_locked = "Сначала заработай этот сувенир в ремиксе.", invalid_souvenir = "Выбери сувенир из вашей коллекции.",
 }
 local function updateStorage(value)
     local previous = storageStatus.state
@@ -567,15 +569,19 @@ showStory = function(key)
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .93) end
 end
-showRemixes = function(key)
+showRemixes = function(key, scrollPosition)
     local photo
     for _, item in state.album do if item.key == key then photo = item; break end end
     if not photo then return end
-    closeModal(); modalRebuild = function() showRemixes(key) end
+    closeModal(); modalRebuild = function() showRemixes(key, scrollPosition) end
     modal = UI.overlay(canvas, "RemixOverlay", .06)
     modalViewer = RemixBoard.mount(modal, photo, {
         mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth,
+        scrollPosition = scrollPosition, scrollChanged = function(position) scrollPosition = position end,
         play = function(locationId, remixId) startGame(key, 3, locationId, remixId) end,
+        pin = function(souvenirId)
+            if rpc("pinSouvenir", {key = key, souvenirId = souvenirId}) then showRemixes(key, scrollPosition) end
+        end,
         back = function() showStory(key) end,
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .94) end
@@ -670,7 +676,7 @@ local function submitGame(choice)
             closeModal(); activeTab = previous.practice and "album" or "matches"
             render()
             if snapshot then
-                if previous.practice then showStory(previous.key) end
+                if previous.remixId then showRemixes(previous.key) elseif previous.practice then showStory(previous.key) end
                 toast("Раунд уже закрыт. Твой прогресс обновлён.", C.panel)
                 notifyMatches(snapshot.news)
             else
@@ -756,7 +762,8 @@ renderGame = function(updateOnly)
     local back = UI.button(focused and header or body, "Back", focused and "←" or (session.practice and "←  К истории" or "←  Назад"), UDim2.fromOffset(0, 0), UDim2.fromOffset(focused and settingsSize or (mobile and 145 or 178), focused and settingsSize or 54), C.panel, function()
         if busy or gameInputLocked then return end
         rpc("cancelGame"); activeGame = nil
-        if session.practice then nav("album"); showStory(session.key) else render() end
+        if session.remixId then nav("album"); showRemixes(session.key)
+        elseif session.practice then nav("album"); showStory(session.key) else render() end
     end)
     if focused then
         back.TextSize = 30

@@ -144,5 +144,49 @@ test("Reverse generators never produce a round solved by repeating forwards", fu
         assert(forwardMatches == 0)
     end end end
 end)
+test("Earned photo stickers persist, replace one another and can be removed without spending souvenirs", function()
+    local p,key=profile()
+    assert(Logic.finishRemix(p,key,"cafe","long",5/6))
+    assert(Logic.finishRemix(p,key,"park","reverse",1))
+    assert(Logic.pinSouvenir(p,key,"cafe:long"))
+    local revision=p.revision
+    assert(Logic.pinSouvenir(p,key,"cafe:long") and p.revision==revision)
+    local saved=serde.decode("json",encode(p))
+    assert(Logic.validSavedProfile(saved))
+    local loaded=Logic.normalizeProfile(saved,3000)
+    assert(Remix.sticker(Logic.publicSnapshot(loaded,3000).album[1]).shape=="cup")
+    assert(Logic.pinSouvenir(loaded,key,"park:reverse"))
+    assert(Remix.sticker(loaded.album[key]).shape=="flower")
+    assert(Logic.pinSouvenir(loaded,key,nil) and Remix.sticker(loaded.album[key])==nil)
+    assert(Remix.progress(loaded.album[key]).collected==2 and loaded.album[key].locationId=="park")
+end)
+test("A locked or malformed sticker cannot change a story or borrow another story's reward", function()
+    local p,key=profile()
+    assert(Logic.finishRemix(p,key,"cafe","long",1))
+    local before=encode(p)
+    for _,id in {"park:long","unknown:long",{},false,42} do
+        assert(not Logic.pinSouvenir(p,key,id) and encode(p)==before)
+    end
+    local id=Catalog[2].id
+    assert(Logic.swipe(p,id,"gold",true,1000,{acceptance=0,timing=0,delay=0}))
+    local other=Logic.key(id,"gold")
+    for stage=1,3 do assert(Logic.finishStage(p,other,stage,1,1100)) end
+    before=encode(p)
+    assert(not Logic.pinSouvenir(p,other,"cafe:long") and encode(p)==before)
+    assert(not Logic.pinSouvenir(p,"missing",nil))
+end)
+test("Saved stickers must refer to an earned souvenir in the same story", function()
+    local p,key=profile()
+    p.album[key].pinnedSouvenir="cafe:long"
+    assert(not Logic.validSavedProfile(p) and Remix.sticker(p.album[key])==nil)
+    assert(Logic.finishRemix(p,key,"cafe","long",4/6))
+    assert(not Logic.validSavedProfile(p))
+    assert(Logic.finishRemix(p,key,"cafe","long",5/6))
+    assert(Logic.validSavedProfile(p))
+    p.album[key].pinnedSouvenir="unknown"
+    assert(not Logic.validSavedProfile(p))
+    p.album[key].pinnedSouvenir=nil
+    assert(Logic.validSavedProfile(p))
+end)
 fs.writeFile("prototype/evidence/date-remix-tests.json", serde.encode("json", {passed = #tests, tests = tests}, true))
 print("Passed " .. #tests .. " date remix and souvenir checks")

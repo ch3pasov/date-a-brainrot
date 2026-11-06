@@ -19,8 +19,10 @@ each location and mode. Scores and souvenirs persist separately from the origina
 selfie and best scores. Retries are unlimited and never remove earned progress.
 The album suggests unvisited places, tracks souvenirs and adapts text spacing on
 small screens. A replay proposes a new place while keeping your manual selection.
+Consecutive correct answers get personality-specific cheers. Earned souvenirs can
+be pinned as stickers on story photos, replaced or removed without spending them.
 
-305 offline checks and both source builds pass. New UI geometry and actions are
+316 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 

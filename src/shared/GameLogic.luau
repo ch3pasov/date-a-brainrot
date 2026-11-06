@@ -95,6 +95,7 @@ function Logic.validSavedProfile(data)
                     if entry.selfieAt ~= nil and not finite(entry.selfieAt) then return false end
                     if not validVisitedLocations(entry.visitedLocations) then return false end
                     if not Remix.validScores(entry.remixScores) then return false end
+                    if entry.pinnedSouvenir ~= nil and not Remix.sticker(entry) then return false end
                     if entry.avatarUserId ~= nil and (not finite(entry.avatarUserId) or entry.avatarUserId % 1 ~= 0) then return false end
                     if entry.avatarSnapshot ~= nil and (type(entry.avatarSnapshot) ~= "string" or #entry.avatarSnapshot > 64000) then return false end
                 end
@@ -247,6 +248,17 @@ function Logic.finishRemix(profile, key, locationId, remixId, score)
     end
     return true, { passed = passed, best = math.max(score, previous), improved = score > previous,
         unlocked = passed and not Remix.passed(remixId, previous) }
+end
+function Logic.pinSouvenir(profile, key, souvenirId)
+    local match, photo = profile.matches[key], profile.album[key]
+    if not match or match.stage ~= 4 or not photo then return false, "story_not_complete" end
+    if souvenirId ~= nil then
+        local souvenir = Remix.find(souvenirId)
+        if not souvenir then return false, "invalid_souvenir" end
+        if not photo.remixScores or not Remix.passed(souvenir.remixId, photo.remixScores[souvenirId]) then return false, "souvenir_locked" end
+    end
+    if photo.pinnedSouvenir ~= souvenirId then photo.pinnedSouvenir = souvenirId; profile.revision += 1 end
+    return true
 end
 function Logic.publicSnapshot(profile, now)
     local pending, unanswered, swipes, sentLikes = 0, 0, {}, {}

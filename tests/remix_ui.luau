@@ -76,6 +76,27 @@ test("Remix result remains scrollable and its fixed actions do not overlap on sh
         assert(result.Title.Text=="НОВЫЙ СУВЕНИР!")
     end
 end)
+test("Only earned souvenirs offer photo actions and the selected sticker can be removed",function()
+    for _,screen in screens do
+        local f=fixture(screen[1],screen[2]);local options=f.options();local pins={}
+        options.play=function() end;options.back=function() end
+        options.pin=function(id)table.insert(pins,{id=id})end
+        local board=f.board.mount(f.root,{remixScores={["cafe:long"]=1,["park:reverse"]=.75},pinnedSouvenir="cafe:long"},options).frame
+        local list=board.RemixList
+        assert(list.Remix_cafe_long:GetAttribute("Pinned"))
+        assert(list.Remix_cafe_long.PinSouvenir.Text=="УБРАТЬ")
+        assert(list.Remix_park_reverse.PinSouvenir.Text=="НА ФОТО")
+        assert(list.Remix_rooftop_long.PinSouvenir==nil)
+        list.Remix_cafe_long.PinSouvenir.action();list.Remix_park_reverse.PinSouvenir.action()
+        assert(#pins==2 and pins[1].id==nil and pins[2].id=="park:reverse")
+        for _,card in {list.Remix_cafe_long,list.Remix_park_reverse} do
+            local w,h=card.Size.X.Offset,card.Size.Y.Offset
+            local play,pin=rect(card.PlayRemix,w,h),rect(card.PinSouvenir,w,h)
+            assert(play.x+play.w+8<=pin.x and pin.x+pin.w<=w-10)
+            assert(pin.w*f.logical.scale>=44 and pin.h*f.logical.scale>=44)
+        end
+    end
+end)
 fs.writeFile("prototype/evidence/remix-ui-tests.json",serde.encode("json",{passed=#tests,tests=tests,
     scope="Production UI and icons with controlled instances; geometry/callbacks only, no Roblox font or visual playtest"},true))
 print("Passed " .. #tests .. " remix UI integration checks")

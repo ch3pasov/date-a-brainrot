@@ -4,6 +4,7 @@ local Locations = require(Shared.Locations)
 local DateReveal = require(Shared.DateReveal)
 local DateCollection = require(Shared.DateCollection)
 local Remix = require(Shared.DateRemix)
+local Vibe = require(Shared.RoundVibe)
 local PresentationLayout = require(Shared.PresentationLayout)
 local UI = require(script.Parent.UI)
 local Scene = require(script.Parent.SceneViewer)
@@ -179,7 +180,7 @@ function Presentation.mount(body, session, character, variant, options)
         counter.Visible = not immersive
         controller.dateScene = dateScene
         dateCollectionState = DateCollection.restore(session, options.dateCollectionState)
-        local cue = UI.frame(art, "DateCue", immersive and UDim2.new(.5, mobile and -190 or -220, 0, dateHeader.cueY) or UDim2.new(.5, mobile and -150 or -220, 0, 10), UDim2.fromOffset(immersive and (mobile and 380 or 440) or (mobile and 300 or 440), 44), immersive and style.cream or C.panel, immersive and 4 or 14); cue.BackgroundTransparency = immersive and 0 or .08
+        local cue = UI.frame(art, "DateCue", immersive and UDim2.new(.5, mobile and -190 or -220, 0, dateHeader.cueY) or UDim2.new(.5, mobile and -150 or -220, 0, 10), UDim2.fromOffset(immersive and (mobile and 380 or 440) or (mobile and 300 or 440), math.max(44, math.ceil(UI.readableSize(mobile and 19 or 21) * 1.3) + 4)), immersive and style.cream or C.panel, immersive and 4 or 14); cue.BackgroundTransparency = immersive and 0 or .08
         if immersive then
             cue.Rotation = 2; UI.stroke(cue, style.ink, .15).Thickness = 2
         end
@@ -197,7 +198,9 @@ function Presentation.mount(body, session, character, variant, options)
             for i, button in controller.buttons do local p = dateScene.project(i); button.Position = UDim2.fromScale(p.X, p.Y) end
         end))
         roundDots = dots(root, total, h - (immersive and 48 or 33))
-        local turnPrompt = remix and remix.cue or "Теперь твой ход"
+        local function turnPrompt(nextSession)
+            return (session.remixId == "reverse" and "С конца · " or "Твой ход · ") .. nextSession.step .. "/" .. total
+        end
         local function showReveal()
             local cue = DateReveal.current(revealState)
             root:SetAttribute("RevealPhase", cue.phase); root:SetAttribute("RevealIndex", cue.index); root:SetAttribute("RevealTotal", cue.total)
@@ -215,11 +218,11 @@ function Presentation.mount(body, session, character, variant, options)
                     outline.Transparency = selected and 0 or .1
                 end
             end
-            prompt.Text = cue.finished and turnPrompt or ("Запоминай · " .. cue.index .. "/" .. cue.total .. (session.remixId == "reverse" and " · потом наоборот" or ""))
+            prompt.Text = cue.finished and turnPrompt(controller.session) or ("Запоминай · " .. cue.index .. "/" .. cue.total)
         end
         controller.updateContent = function(nextSession)
             counter.Text = tostring(nextSession.step) .. " / " .. total
-            if revealState and controller.revealing then showReveal() else prompt.Text = turnPrompt end
+            if revealState and controller.revealing then showReveal() else prompt.Text = turnPrompt(nextSession) end
             dateCollectionState = DateCollection.restore(nextSession, dateCollectionState)
             dateScene.setCollected(dateCollectionState)
             updateDots()
@@ -290,6 +293,9 @@ function Presentation.mount(body, session, character, variant, options)
             turn = session.stage == 2 and controller.session.attempts + 1 or controller.session.step,
             choice = choice, good = good }
         local alreadyPerformed = previewChoice == choice
+        local vibe = Vibe.stats(controller.session.hits, reactionState.turn, good)
+        local cheer = good and Vibe.cheer(character.personality, vibe.current) or nil
+        root:SetAttribute("AnswerStreak", vibe.current)
         releasePreview(alreadyPerformed)
         updateDots(good, animated)
         if session.stage == 1 then if npcScene and animated ~= false then npcScene.act("npc", good and "heart" or "wave", .7) end
@@ -300,7 +306,7 @@ function Presentation.mount(body, session, character, variant, options)
                 if not alreadyPerformed then playerScene.act("player", gesture.id, .8) end
                 npcScene.act("npc", good and gesture.id or "wave", .8)
             end
-            prompt.Text = good and "Есть контакт! ♥" or "Ой! Попробуем следующий жест"
+            prompt.Text = cheer or (good and "Есть контакт! ♥" or "Ой! Попробуем следующий жест")
             local button = controller.buttons[choice]
             if button then
                 button.BackgroundColor3 = good and Color3.fromRGB(196, 232, 213) or Color3.fromRGB(252, 219, 226)
@@ -310,7 +316,7 @@ function Presentation.mount(body, session, character, variant, options)
             dateCollectionState = DateCollection.confirm(dateCollectionState, controller.session.step, choice, good)
             dateScene.setCollected(dateCollectionState, animated ~= false and controller.session.step or nil)
             if animated ~= false then dateScene.flash(choice, good); dateScene.act("both", good and "heart" or "wave", .7) end
-            prompt.Text = good and "Вот это общий вайб! ♥" or "Немного импровизации!"
+            prompt.Text = cheer or (good and "Вот это общий вайб! ♥" or "Немного импровизации!")
         end
     end
     function controller.restoreReaction(previous)

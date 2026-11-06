@@ -7,6 +7,7 @@ local ListLayout = require(Shared.ListLayout)
 local UI = require(script.Parent.UI)
 local Feedback = require(script.Parent.Feedback)
 local Empty = require(script.Parent.EmptyPostcard)
+local Sticker = require(script.Parent.SouvenirSticker)
 local C = UI.colors
 local Album = {}
 function Album.passport(parent, photo, position, size)
@@ -79,6 +80,7 @@ function Album.render(body, state, mobile, page, callbacks)
         UI.stroke(photo, C.ink, 0).Thickness = 3
         local art = UI.frame(photo, "Photo", UDim2.fromOffset(10, 10), UDim2.new(1, -20, 0, artHeight), C.aqua, 1)
         callbacks.mount(art, c.id, v.id, { scene = true, photo = true, pair = true, locationId = a.locationId or "park", userId = a.avatarUserId or state.playerUserId, avatarSnapshot = a.avatarSnapshot })
+        Sticker.mount(art, a)
         local tape = UI.frame(photo, "PhotoTape", UDim2.new(.5, -42, 0, 0), UDim2.fromOffset(84, 17), C.yellow, 1)
         tape.Rotation = -4; tape.BackgroundTransparency = .22; tape.ZIndex = 3
         local perfect = Collection.perfect(a)

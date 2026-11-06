@@ -16,14 +16,29 @@ local souvenirs = {
     rooftop = { long = { name = "Карманное созвездие", caption = "Шесть желаний. Ни одного серьёзного.", shape = "star" },
         reverse = { name = "Подарок из будущего", caption = "Вечер ещё не начался, а воспоминание уже здесь.", shape = "gift" } },
 }
+local byStamp = {}
+for _, location in Locations.list do
+    for _, mode in Remix.list do
+        local souvenir = souvenirs[location.id][mode.id]
+        local key = location.id .. ":" .. mode.id
+        byStamp[key] = { key = key, locationId = location.id, remixId = mode.id,
+            name = souvenir.name, caption = souvenir.caption, shape = souvenir.shape }
+    end
+end
 function Remix.get(id) return type(id) == "string" and byId[id] or nil end
 function Remix.key(locationId, id) return locationId .. ":" .. id end
 function Remix.souvenir(locationId, id)
     return souvenirs[locationId] and souvenirs[locationId][id] or nil
 end
+function Remix.find(stamp) return type(stamp) == "string" and byStamp[stamp] or nil end
 function Remix.passed(id, score)
     local mode = Remix.get(id)
     return mode ~= nil and type(score) == "number" and score >= mode.required / mode.total and score <= 1
+end
+function Remix.sticker(photo)
+    local souvenir = photo and Remix.find(photo.pinnedSouvenir)
+    if souvenir and photo.remixScores and Remix.passed(souvenir.remixId, photo.remixScores[souvenir.key]) then return souvenir end
+    return nil
 end
 function Remix.validScores(scores)
     if scores == nil then return true end -- saves written before remixes

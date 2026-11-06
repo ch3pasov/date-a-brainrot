@@ -61,7 +61,7 @@ local function fixture(width, height)
     end
     local bookFirst = assert(source:find("local C = UI.colors", 1, true))
     local book = luau.load(source:sub(bookFirst), { environment = {
-        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons,
+        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons, Sticker = {mount=function() end},
         Color3 = roblox.Color3, UDim2 = roblox.UDim2, Enum = enum,
     } })()
     f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true },

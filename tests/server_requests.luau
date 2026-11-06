@@ -312,6 +312,26 @@ test("Real server reverse mode uses the opposite order and a cancelled remix gra
     assert(f.profiles[f.a].album[key].remixScores["park:long"] == nil)
     assert(Remix.progress(f.profiles[f.a].album[key]).collected == 1)
 end)
+test("Photo sticker RPC verifies ownership, saves promptly and makes retries idempotent",function()
+    local f=fixture();local key=completedStory(f)
+    assert(Logic.finishRemix(f.profiles[f.a],key,"cafe","long",1))
+    local args={key=key,souvenirId="cafe:long"}
+    local response=f.invoke(f.a,"pinSouvenir",args)
+    assert(not response.error and response.album[1].pinnedSouvenir=="cafe:long")
+    assert(#f.delayed==1 and f.delayLog[#f.delayLog]==0)
+    f.drain();assert(f.saves[#f.saves].data.album[key].pinnedSouvenir=="cafe:long")
+    local revision=f.profiles[f.a].revision
+    assert(not f.invoke(f.a,"pinSouvenir",args).error and f.profiles[f.a].revision==revision and #f.delayed==0)
+    assert(f.invoke(f.a,"pinSouvenir",{key=key,souvenirId="park:long"}).error=="souvenir_locked")
+    assert(f.invoke(f.a,"pinSouvenir",{key=key,souvenirId=false}).error=="invalid_souvenir")
+    assert(f.profiles[f.a].revision==revision and #f.delayed==0)
+    local other=f.match(f.b)
+    for stage=1,3 do assert(Logic.finishStage(f.profiles[f.b],other,stage,1,f.wall)) end
+    assert(f.invoke(f.b,"pinSouvenir",args).error=="souvenir_locked")
+    assert(not f.invoke(f.a,"pinSouvenir",{key=key}).error)
+    assert(f.profiles[f.a].album[key].pinnedSouvenir==nil)
+    f.drain();assert(f.saves[#f.saves].data.album[key].pinnedSouvenir==nil)
+end)
 local passed = 0; for _, record in tests do if record.passed then passed += 1 end end
 fs.writeFile("prototype/evidence/server-request-tests.json", serde.encode("json", { passed = passed, failed = #tests - passed,
     total = #tests, tests = tests, production_changed_by_test = false,
