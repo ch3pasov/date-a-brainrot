@@ -13,8 +13,9 @@ obtained through Roblox Creator Store; those files are not licensed here.
 
 ## Development update — November 6, 2026
 
-The changes below are on `codex/playful-replays-2026-11-06` and have **not been
-published to Roblox**. The live release is a separate checkpoint.
+The update is published as **Roblox place version 30**. The private publication
+receipt confirms the checked source and matching build hashes; the public source
+remains separate from the third-party art used by the live game.
 
 - **More to do after a selfie.** Two optional date remixes add a six-item order and
   reverse-order memory. Collect six illustrated souvenirs per story across three
@@ -45,14 +46,19 @@ published to Roblox**. The live release is a separate checkpoint.
 **Validation:** 440 offline checks, 61 compiled source files and both source builds
 pass. The full-catalog simulation covers 136 stories, 1,224 rounds and 816 souvenirs
 across a saved-profile JSON roundtrip. UI checks exercise geometry, text and actions
-on compact and wide layouts. These checks and approximate layout previews do not
-establish Roblox rendering, live storage or physical-device performance for this
-update; it has not had a live playtest.
+on compact and wide layouts. A Web Play smoke test also confirmed version 30,
+the existing four-photo profile,
+a 100% cafe reverse remix, its souvenir and pinned sticker, photo-booth previews,
+and the story at 390×650. After a normal leave and rejoin, the reward, sticker,
+remix record and visited venue remained. This covers one story and one remix;
+it is not a full-catalog live test or a physical-device performance result.
 
 ## Released checkpoint
 
-- Live Roblox place version: **29**.
-- Gameplay source: `f8bfedf08efe3112edcc289274b941adfe6c38a6` in the private development history.
+- Live Roblox place version: **30** (November 6 update).
+- Version 30 publication source: `9b127abd181a0d9f56df8bd6441d8e1eb9609140` in the private development history.
+- The original-release checks below describe version **29**, before this update.
+- Original-release gameplay source: `f8bfedf08efe3112edcc289274b941adfe6c38a6` in the private development history.
 - Original-source checkpoint: `c6731f75c8798a9f87f014696e8d9e16442ac1a8`.
 - 285 offline checks passed for the original release. Its chat, call, park date,
   selfie, and ordinary-rejoin persistence were checked in Web Play.
