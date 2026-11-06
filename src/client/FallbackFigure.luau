@@ -86,7 +86,11 @@ function Figure.build(character,variant)
 end
 function Figure.obtain(models,character,variant)
     local original=models:FindFirstChild(character.modelName)
-    if original and original:IsA("Model") then return original:Clone(),false end
+    if original and original:IsA("Model") then
+        for _,object in original:GetDescendants()do
+            if object:IsA("BasePart") and object.Transparency<1 then return original:Clone(),false end
+        end
+    end
     return Figure.build(character,variant),true
 end
 function Figure.armTransform(side,gesture,phase)

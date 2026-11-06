@@ -5,9 +5,13 @@ image, or external asset reference. With that container, the client creates
 original toy stand-ins from plain Parts. Each personality has its own accessories;
 variant colors and date/photo gestures work without external character art.
 
-Supplying a valid Model replaces its stand-in automatically. The fallback handles
-missing models or a non-Model template; it does not replace an existing model
-after a remote mesh/texture permission or loading failure.
+Supplying a visible Model replaces its stand-in automatically. Missing, empty,
+entirely invisible, or non-Model templates use a stand-in. After preloading, a
+confirmed Failure or TimedOut status for a required mesh also activates a stand-in
+in portraits and scenes. Failed textures do not discard loaded geometry. Unknown
+mesh statuses keep the supplied model, and a later view can retry a failed load.
+These paths are tested with controlled service responses; no live permission or
+asset-rendering result is implied by the offline checks.
 
 The game expects `ReplicatedStorage.BrainrotAssets` to contain:
 

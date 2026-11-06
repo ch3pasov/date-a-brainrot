@@ -69,6 +69,16 @@ test("An existing character model is cloned intact while missing or invalid temp
     toy,fallback=Figure.obtain(models,Catalog[1],Config.Variants[1]);assert(fallback and wrong.Parent==models)
     toy:Destroy();models:Destroy()
 end)
+test("Empty or entirely invisible model templates display toys without changing their originals",function()
+    local models=roblox.Instance.new("Folder")
+    local original=roblox.Instance.new("Model");original.Name=Catalog[1].modelName;original.Parent=models
+    local toy,fallback=Figure.obtain(models,Catalog[1],Config.Variants[1]);assert(fallback);toy:Destroy()
+    local root=roblox.Instance.new("Part");root.Transparency=1;root.Parent=original
+    toy,fallback=Figure.obtain(models,Catalog[1],Config.Variants[1]);assert(fallback and root.Parent==original);toy:Destroy()
+    root.Transparency=.5
+    local copy;copy,fallback=Figure.obtain(models,Catalog[1],Config.Variants[1]);assert(not fallback and copy~=original)
+    copy:Destroy();models:Destroy()
+end)
 test("Toy wave stays low and heart/dance use separate poses for both arms",function()
     local identity=roblox.CFrame.new()
     for i=0,20 do

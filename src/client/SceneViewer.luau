@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local ContentProvider = game:GetService("ContentProvider")
+local ModelContent = require(script.Parent.ModelContent)
 local Locations = require(ReplicatedStorage:WaitForChild("Shared").Locations)
 local DateCollection = require(ReplicatedStorage.Shared.DateCollection)
 local DateItemLayout = require(ReplicatedStorage.Shared.DateItemLayout)
@@ -137,43 +137,52 @@ function Scene.mount(parent, character, variant, options)
     local loadingDots = {}
     local loadingLabel
     local arms = {}
-    if character and not options.onlyPlayer then
-        model,fallback = FallbackFigure.obtain(assets.Models,character,variant)
-        if model then
-            model.Name = "BrainrotFigure"
-            viewport:SetAttribute("FallbackCharacter",fallback)
-            local _, dimensions = visibleBounds(model)
-            local scaleFactor = math.min((pair and 5.15 or 5.7) / math.max(dimensions.Y, .1), (pair and 6 or 8.5) / math.max(dimensions.X, .1))
-            model:ScaleTo(model:GetScale() * scaleFactor)
-            local center, size = visibleBounds(model); npcHeight, npcWidth, npcDepth = size.Y, size.X, size.Z
-            model:PivotTo(CFrame.new(-center.Position.X, -center.Position.Y + size.Y / 2, -center.Position.Z) * model:GetPivot())
-            for _, object in model:GetDescendants() do
-                if object:IsA("LuaSourceContainer") or object:IsA("PackageLink") then object:Destroy()
-                elseif object:IsA("Bone") then
-                    local side = (object.Name == "Arm.L" or object.Name == "Arms.L") and "Arm.L"
-                        or (object.Name == "Arm.R" or object.Name == "Arms.R") and "Arm.R"
-                    if character.id == "noobini-pizzanini" then side = object.Name == "Torso.002" and "Arm.L" or object.Name == "Torso.001" and "Arm.R" or side end
-                    if side then arms[side] = object; object.Transform = CFrame.Angles(0, 0, side == "Arm.L" and -1.15 or 1.15) end
-                elseif object:IsA("BasePart") then
-                    object.Anchored = true; object.CanCollide = false; object.CanTouch = false; object.CanQuery = false
-                    local side=fallback and object:GetAttribute("ToyArm")
-                    if side then arms[side]={part=object,rest=model:GetPivot():Inverse()*object.CFrame} end
-                    if variant and variant.id ~= "classic" and object:IsA("MeshPart") then
-                        object.Color = variant.id == "gold" and Color3.fromRGB(243, 183, 63) or variant.id == "neon" and Color3.fromRGB(92, 222, 183) or Color3.fromRGB(129, 103, 226)
-                        object.Material = variant.id == "gold" and Enum.Material.Metal or Enum.Material.SmoothPlastic
-                    end
+    local function placeNpc(nextModel,isFallback,offset)
+        if model then model:Destroy()end
+        if npcShadow then npcShadow:Destroy()end
+        model,fallback,arms=nextModel,isFallback,{}
+        if not model then return end
+        model.Name = "BrainrotFigure"
+        viewport:SetAttribute("FallbackCharacter",fallback)
+        local _, dimensions = visibleBounds(model)
+        local scaleFactor = math.min((pair and 5.15 or 5.7) / math.max(dimensions.Y, .1), (pair and 6 or 8.5) / math.max(dimensions.X, .1))
+        model:ScaleTo(model:GetScale() * scaleFactor)
+        local center, size = visibleBounds(model); npcHeight, npcWidth, npcDepth = size.Y, size.X, size.Z
+        model:PivotTo(CFrame.new(-center.Position.X, -center.Position.Y + size.Y / 2, -center.Position.Z) * model:GetPivot())
+        for _, object in model:GetDescendants() do
+            if object:IsA("LuaSourceContainer") or object:IsA("PackageLink") then object:Destroy()
+            elseif object:IsA("Bone") then
+                local side = (object.Name == "Arm.L" or object.Name == "Arms.L") and "Arm.L"
+                    or (object.Name == "Arm.R" or object.Name == "Arms.R") and "Arm.R"
+                if character.id == "noobini-pizzanini" then side = object.Name == "Torso.002" and "Arm.L" or object.Name == "Torso.001" and "Arm.R" or side end
+                if side then arms[side] = object; object.Transform = CFrame.Angles(0, 0, side == "Arm.L" and -1.15 or 1.15) end
+            elseif object:IsA("BasePart") then
+                object.Anchored = true; object.CanCollide = false; object.CanTouch = false; object.CanQuery = false
+                local side=fallback and object:GetAttribute("ToyArm")
+                if side then arms[side]={part=object,rest=model:GetPivot():Inverse()*object.CFrame} end
+                if variant and variant.id ~= "classic" and object:IsA("MeshPart") then
+                    object.Color = variant.id == "gold" and Color3.fromRGB(243, 183, 63) or variant.id == "neon" and Color3.fromRGB(92, 222, 183) or Color3.fromRGB(129, 103, 226)
+                    object.Material = variant.id == "gold" and Enum.Material.Metal or Enum.Material.SmoothPlastic
                 end
             end
-            npcBase = CFrame.new(pair and 1.8 or 0, 0, options.photo and .2 or -.3) * CFrame.Angles(0, pair and -.12 or 0, 0) * model:GetPivot()
-            model:PivotTo(npcBase); model.Parent = world
-            npcShadow = part(world, "FigureShadow", Vector3.new(.025, math.clamp(size.X * .6, 1.2, 4.5), math.clamp(size.Z * .8, 1, 2.5)), Vector3.new(pair and 1.8 or 0, .015, options.photo and .2 or -.3), rgb(location.ground):Lerp(Color3.fromRGB(75, 65, 84), .5), Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2)); npcShadow.Transparency = .6
-            viewport:SetAttribute("SceneAssetsReady", fallback or loaded[character.id] == true)
-            if not fallback and not loaded[character.id] then
-                for i = 1, 3 do loadingDots[i] = ball(world, "LoadingDot", .22, Vector3.new((pair and 1.8 or 0) + (i - 2) * .45, 2.2, 0), Color3.fromRGB(171, 158, 205)) end
-                loadingLabel = Instance.new("TextLabel"); loadingLabel.Name = "SceneLoading"; loadingLabel.Size = UDim2.new(1, -20, 0, 24); loadingLabel.Position = UDim2.new(0, 10, 1, -29)
-                loadingLabel.BackgroundTransparency = 1; loadingLabel.Text = "Загружаем фигурку…"; loadingLabel.TextColor3 = Color3.fromRGB(103, 98, 120); loadingLabel.TextSize = 13; loadingLabel.Font = Enum.Font.Gotham; loadingLabel.Parent = viewport
-                if options.loadingTop then loadingLabel.Position = UDim2.fromOffset(10, options.loadingTop) end
-            end
+        end
+        npcBase = CFrame.new(pair and 1.8 or 0, 0, options.photo and .2 or -.3) * CFrame.Angles(0, pair and -.12 or 0, 0) * model:GetPivot()
+        model:PivotTo(npcBase); model.Parent = world
+        npcShadow = part(world, "FigureShadow", Vector3.new(.025, math.clamp(size.X * .6, 1.2, 4.5), math.clamp(size.Z * .8, 1, 2.5)), Vector3.new(pair and 1.8 or 0, .015, options.photo and .2 or -.3), rgb(location.ground):Lerp(Color3.fromRGB(75, 65, 84), .5), Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2)); npcShadow.Transparency = .6
+        viewport:SetAttribute("SceneAssetsReady", fallback or loaded[character.id] == true)
+        if offset~=0 then
+            local shift=CFrame.new(0,0,offset)
+            npcBase=shift*npcBase;model:PivotTo(npcBase);npcShadow.CFrame=shift*npcShadow.CFrame
+        end
+    end
+    if character and not options.onlyPlayer then
+        local candidate,isFallback=FallbackFigure.obtain(assets.Models,character,variant)
+        placeNpc(candidate,isFallback,0)
+        if model and not fallback and not loaded[character.id] then
+            for i = 1, 3 do loadingDots[i] = ball(world, "LoadingDot", .22, Vector3.new((pair and 1.8 or 0) + (i - 2) * .45, 2.2, 0), Color3.fromRGB(171, 158, 205)) end
+            loadingLabel = Instance.new("TextLabel"); loadingLabel.Name = "SceneLoading"; loadingLabel.Size = UDim2.new(1, -20, 0, 24); loadingLabel.Position = UDim2.new(0, 10, 1, -29)
+            loadingLabel.BackgroundTransparency = 1; loadingLabel.Text = "Загружаем фигурку…"; loadingLabel.TextColor3 = Color3.fromRGB(103, 98, 120); loadingLabel.TextSize = 13; loadingLabel.Font = Enum.Font.Gotham; loadingLabel.Parent = viewport
+            if options.loadingTop then loadingLabel.Position = UDim2.fromOffset(10, options.loadingTop) end
         end
     end
     local figure
@@ -281,15 +290,19 @@ function Scene.mount(parent, character, variant, options)
     end
     cameraUpdate()
     local lastVisibleCheck, onScreen, lastPhotoModel = 0, true, nil
-    local connection
+    local connection,controller
     if loadingLabel then
         task.spawn(function()
-            local successful = true
-            local ok = pcall(function() ContentProvider:PreloadAsync(model:GetDescendants(), function(_, status) if status ~= Enum.AssetFetchStatus.Success then successful = false end end) end)
-            loaded[character.id] = ok and successful or nil
+            local ready,failedMesh=ModelContent.load(model)
+            loaded[character.id] = ready or nil
             if not alive then return end
-            viewport:SetAttribute("SceneAssetsReady", ok and successful)
-            if ok and successful then
+            if failedMesh then
+                placeNpc(FallbackFigure.build(character,variant),true,castOffset)
+                cameraAspect=nil;cameraUpdate()
+                if controller then controller.model=model end
+            end
+            viewport:SetAttribute("SceneAssetsReady", ready or fallback)
+            if ready or fallback then
                 loadingLabel:Destroy(); loadingLabel = nil
                 for _, dot in loadingDots do dot:Destroy() end; table.clear(loadingDots)
             else loadingLabel.Text = "Не удалось загрузить фигурку" end
@@ -397,7 +410,7 @@ function Scene.mount(parent, character, variant, options)
         if not destroying then viewport:Destroy() end
     end
     viewport.Destroying:Connect(function() dispose(true) end)
-    local controller = { viewport = viewport, world = world, model = model, player = figure, items = items, collection = collection, tracks = {}, dispose = dispose }
+    controller = { viewport = viewport, world = world, model = model, player = figure, items = items, collection = collection, tracks = {}, dispose = dispose }
     function controller.setPhotoPose(id)
         local pose=PhotoStyle.pose(id)
         if not alive or not options.photo or not pose then return false end

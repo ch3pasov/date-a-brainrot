@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local ContentProvider = game:GetService("ContentProvider")
+local ModelContent = require(script.Parent.ModelContent)
 local Feedback = require(script.Parent.Feedback)
 local FallbackFigure = require(script.Parent.FallbackFigure)
 local assets = ReplicatedStorage:WaitForChild("BrainrotAssets")
@@ -71,20 +71,32 @@ function Viewer.mount(parent, character, variant, options)
     if tracks.idle then tracks.idle:Play(0.15, 1, Feedback.motionEnabled and 1 or 0) end
     local alive = true
     local greetSerial = 0
+    local controller,lastPosePhase
     if not fallback and not loaded[character.id] then
         local loading = Instance.new("TextLabel"); loading.Name = "Loading"; loading.Size = UDim2.new(1,-20,0,30); loading.Position = UDim2.new(0,10,1,-34)
         loading.BackgroundTransparency = 1; loading.Text = "Загружаем…"; loading.TextScaled = true; loading.Font = Enum.Font.Gotham; loading.TextColor3 = Color3.fromRGB(103,98,120); loading.Parent = viewport
         local textLimit = Instance.new("UITextSizeConstraint"); textLimit.MinTextSize = 9; textLimit.MaxTextSize = 13; textLimit.Parent = loading
         task.spawn(function()
-            local ok=pcall(function() ContentProvider:PreloadAsync(model:GetDescendants()) end)
-            loaded[character.id]=ok
+            local ready,failedMesh=ModelContent.load(model)
+            loaded[character.id]=ready or nil
+            if not alive then return end
+            if failedMesh then
+                for _,track in tracks do track:Stop(0);track:Destroy()end;table.clear(tracks)
+                for _,animation in animations do animation:Destroy()end;table.clear(animations)
+                model:Destroy();model=FallbackFigure.build(character,variant);fallback=true
+                center,size=model:GetBoundingBox()
+                model:PivotTo(CFrame.new(-center.Position.X,-center.Position.Y+size.Y/2,-center.Position.Z)*model:GetPivot())
+                model.Parent=world;base=model:GetPivot();aim=.53;cameraPerspective=nil;updateCamera()
+                lastPosePhase=nil
+                viewport:SetAttribute("FallbackCharacter",true)
+                if controller then controller.model=model end
+            end
             task.wait(.1)
             if alive and loading.Parent then loading:Destroy() end
         end)
     end
     local lastCheck, visible = 0, true
     local playbackSpeed = Feedback.motionEnabled and 1 or 0
-    local lastPosePhase
     local function onScreen()
         local position, dimensions = viewport.AbsolutePosition, viewport.AbsoluteSize
         if dimensions.X <= 0 or dimensions.Y <= 0 then return false end
@@ -137,7 +149,7 @@ function Viewer.mount(parent, character, variant, options)
         for _, a in animations do a:Destroy() end
         viewport:Destroy()
     end
-    return {
+    controller = {
         viewport = viewport, model = model, tracks = tracks, dispose = dispose,
         look = function(amount) if alive then targetPerspective = math.clamp(amount, -0.22, 0.22) end end,
         greet = function()
@@ -149,5 +161,6 @@ function Viewer.mount(parent, character, variant, options)
             task.delay(2.1, function() if alive and serial == greetSerial and tracks.idle then tracks.idle:Play(0.15, 1, visible and Feedback.motionEnabled and 1 or 0) end end)
         end,
     }
+    return controller
 end
 return Viewer
