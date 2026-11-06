@@ -753,7 +753,13 @@ showResult = function(result, key, completedStage, completedLocation, scrollPosi
             if busy then return end
             nav("album",key);showPhotoStudio(key,{frameId=frameId})
         end,
-        back = function() closeModal(); if result.remixId then nav("album",key); showRemixes(key) elseif result.practice then nav("album",key); showStory(key) else nav("matches") end end,
+        back = function()
+            if busy then return end
+            closeModal()
+            if result.remixId then nav("album",key);showRemixes(key)
+            elseif result.practice then nav("album",key);showStory(key)
+            else nav("matches")end
+        end,
         continue = function()
             if busy then return end
             closeModal()
@@ -783,8 +789,7 @@ local function recoverExpiredGame(previous)
     task.wait(.08)
     local snapshot = rpc("snapshot", nil, true)
     activeGame = nil; gameInputLocked = false
-    closeModal(); activeTab = previous.practice and "album" or "matches"
-    render()
+    nav(previous.practice and "album" or "matches",previous.practice and previous.key or nil)
     if snapshot then
         if previous.remixId then showRemixes(previous.key) elseif previous.practice then showStory(previous.key) end
         toast("Раунд уже закрыт. Твой прогресс обновлён.", C.panel)

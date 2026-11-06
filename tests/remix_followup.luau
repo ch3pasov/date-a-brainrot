@@ -57,7 +57,7 @@ test("A result advances only on click, retries a failure, and ends the full set 
         photo.remixScores[item.key]=1
         local count=#f.games
         api.show({passed=true,remixId=item.remixId,locationId=item.locationId},"story",3,item.locationId)
-        api.busy(true);f.options.continue();assert(#f.games==count and #f.photos==0)
+        api.busy(true);f.options.continue();f.options.back();assert(#f.games==count and #f.photos==0 and #f.tabs==0)
         api.busy(false);f.options.scrolled({Y=180});api.rebuild()
         assert(f.options.scrollPosition.Y==180 and #f.games==count and #f.photos==0)
         f.options.continue()

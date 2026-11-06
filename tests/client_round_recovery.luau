@@ -20,7 +20,7 @@ local function resume(thread,...)
     return table.unpack(result,2,result.n)
 end
 local function fixture(stage,practice)
-    local f = {now=100,requests={},sounds={},renders=0,updates=0,completed={},stories={},remixes={},toasts={},closed=0,news=0}
+    local f = {now=100,requests={},sounds={},renders=0,updates=0,completed={},stories={},remixes={},toasts={},closed=0,news=0,navigations={}}
     f.initial = {token="round",key="friend:classic",stage=stage or 2,step=1,attempts=0,practice=practice==true}
     function f.presentation()
         local view = {previews={},cleared=0,reactions={},locks={}}
@@ -46,6 +46,9 @@ local function fixture(stage,practice)
         completeGame=function(result) table.insert(f.completed,result); f.client.setGame(nil) end,
         closeModal=function() f.closed+=1 end,
         render=function() f.renders+=1 end,
+        nav=function(tab,key)
+            table.insert(f.navigations,{tab=tab,key=key});f.client.setTab(tab);f.renders+=1;f.closed+=1
+        end,
         showStory=function(key) table.insert(f.stories,key) end,
         showRemixes=function(key) table.insert(f.remixes,key) end,
         toast=function(message,color) table.insert(f.toasts,{message=message,color=color}) end,
@@ -61,6 +64,7 @@ local function fixture(stage,practice)
             call=submitGame,
             ready=readyGame,
             setGame=function(value) activeGame=value end,
+            setTab=function(value)activeTab=value end,
             setPresentation=function(value) gamePresentation=value end,
             flags=function(busyValue,lockedValue,revealingValue) busy=busyValue; gameInputLocked=lockedValue; dateRevealing=revealingValue end,
             state=function() return {game=activeGame,locked=gameInputLocked,pending=inFlightGameInput,tab=activeTab} end,
@@ -146,6 +150,8 @@ test("An expired round refreshes progress and returns to the correct destination
         resume(thread,{news={"new-match"}})
         assert(f.client.state().game==nil and not f.client.state().locked and f.client.state().pending==nil)
         assert(f.client.state().tab==(practice and "album" or "matches"))
+        assert(#f.navigations==1 and f.navigations[1].tab==f.client.state().tab)
+        assert(f.navigations[1].key==(practice and f.initial.key or nil))
         assert(f.renders==1 and f.closed==1 and #f.completed==0 and #f.sounds==0)
         assert(#f.stories==(practice and 1 or 0) and f.news==1 and f.lastNews[1]=="new-match")
     end
@@ -206,6 +212,7 @@ test("A lost final remix reply refreshes rewards and returns directly to souveni
     resume(thread,{news={}})
     assert(f.client.state().game==nil and f.client.state().tab=="album")
     assert(#f.remixes==1 and f.remixes[1]==f.initial.key and #f.stories==0 and #f.completed==0)
+    assert(#f.navigations==1 and f.navigations[1].key==f.initial.key)
 end)
 test("Measured chat height enables scrolling and contracts safely for the next shorter reply",function()
     local f=fixture(1);f.view.height=900
