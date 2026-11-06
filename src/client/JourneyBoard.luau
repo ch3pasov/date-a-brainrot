@@ -57,7 +57,7 @@ function Board.mount(parent, ideas, options)
             UI.label(card,"Progress",("%d / %d"):format(idea.progress,idea.total),UDim2.fromOffset(14,y+12),UDim2.new(1,-28,0,l.progressH-12),font,C.mint,true)
         end
         local button=UI.button(card,"ChooseIdea",idea.action,UDim2.fromOffset(14,cardH-actionH-12),UDim2.new(1,-28,0,actionH),C.mint,function()options.choose(idea)end)
-        button.TextColor3=C.panel;button.TextSize=font
+        button.TextColor3=C.panel;button.TextSize=font;button.TextWrapped=true
         top+=cardH+14
     end
     list.CanvasSize=UDim2.fromOffset(0,options.mobile and top or maxH+14)

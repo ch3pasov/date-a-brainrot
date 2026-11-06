@@ -9,7 +9,7 @@ local function test(name,fn)
     assert(ok,name..": "..tostring(err))
 end
 local rect=Harness.rect
-test("General and stage guides keep measured text and fixed closing actions across six screens",function()
+test("General and stage guides keep measured text and fixed closing actions across compact and wide screens",function()
     for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{568,320},{1280,720}}do
         for _,mode in {{},{stage=1},{stage=2},{stage=3},{stage=3,remixId="long"},{stage=3,remixId="reverse"}}do
             local h=Harness.new(screen[1],screen[2]);local u=h.environment.UDim2

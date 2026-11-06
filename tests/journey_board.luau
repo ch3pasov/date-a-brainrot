@@ -17,7 +17,7 @@ local state={album={{key=character.id..":classic",characterId=character.id,varia
 local suggestions=Ideas.build(state)
 local rect=Harness.rect
 test("Actual idea cards show their progress and keep all actions accessible on compact screens",function()
-    for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{1280,720}} do
+    for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{568,320},{1280,720}} do
         local f=Harness.new(screen[1],screen[2]);local chosen={};local disposed=0;local mounts=0
         local icons=f.module("src/client/ToyIcons.luau")
         local board=f.module("src/client/JourneyBoard.luau",{Logic=Logic,Locations=Locations,Icons=icons})
@@ -49,6 +49,15 @@ test("Actual idea cards show their progress and keep all actions accessible on c
                 local bounds=rect(child,r.w,r.h)
                 assert(bounds.y>=previous and bounds.y+bounds.h<=r.h,name)
                 previous=bounds.y+bounds.h
+            end
+            for _,name in {"Title","Character","Note","Progress","ChooseIdea"}do
+                local node=card[name]
+                if node then
+                    local bounds=rect(node,r.w,r.h)
+                    local needed=f.ui.textHeight(node.Text,node.TextSize,bounds.w,node.Font=="bold")
+                    assert(needed<=bounds.h,name.." clips text")
+                    assert(node.TextWrapped or needed<=node.TextSize*1.4,name.." needs wrapping")
+                end
             end
             local button=rect(card.ChooseIdea,r.w,r.h)
             assert(button.h*f.logical.scale>=44 and button.w*f.logical.scale>=44)
