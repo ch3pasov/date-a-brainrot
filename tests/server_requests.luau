@@ -10,6 +10,8 @@ local Catalog = require("../src/shared/Catalog")
 local Games = require("../src/shared/Minigames")
 local Locations = require("../src/shared/Locations")
 local Remix = require("../src/shared/DateRemix")
+local PhotoStyle = require("../src/shared/PhotoStyle")
+local Ideas = require("../src/shared/JourneyIdeas")
 local source = fs.readFile("src/server/GameServer.server.luau")
 local function section(firstMarker, lastMarker)
     local first = assert(source:find(firstMarker, 1, true))
@@ -422,6 +424,67 @@ test("Photo sticker RPC verifies ownership, saves promptly and makes retries ide
     assert(not f.invoke(f.a,"pinSouvenir",{key=key}).error)
     assert(f.profiles[f.a].album[key].pinnedSouvenir==nil)
     f.drain();assert(f.saves[#f.saves].data.album[key].pinnedSouvenir==nil)
+end)
+test("A full story, every venue and souvenir, styled photo and JSON rejoin retain one coherent collection",function()
+    local f=fixture();local key=f.match(f.a);local completed=0
+    local function play(args,miss)
+        local view=f.invoke(f.a,"startGame",args);assert(view.token and not view.error)
+        if view.stage==3 then
+            assert(view.awaitingReady and not view.sequence)
+            view=f.invoke(f.a,"readyGame",{token=view.token});f.clock+=5
+        end
+        local session=f.api.game(f.a)
+        local total=view.stage==2 and 6 or (view.total or 4)
+        local last
+        for turn=1,total do
+            local correct
+            if view.stage==1 then correct=session.chat[turn].best
+            elseif view.stage==2 then correct=Locations.gesture(turn,session.gestureSeed)
+            else correct=Remix.answer(session.sequence,session.remixId,turn) end
+            local choice=(miss==true or miss==turn) and correct%(view.stage==3 and 4 or 3)+1 or correct
+            f.clock+=.5
+            local input={token=view.token,turn=turn,choice=choice}
+            last=f.invoke(f.a,"gameInput",input);assert(not last.error)
+            local replay=f.invoke(f.a,"gameInput",input)
+            if turn<total then assert(replay.resynced);view=last
+            else assert(replay.error=="expired_game" and last.passed~=nil) end
+        end
+        completed+=1;return last
+    end
+    assert(play({key=key},2).score==.75)
+    assert(play({key=key}).score==1)
+    assert(play({key=key,locationId="park"},4).result=="album")
+    assert(play({key=key,practiceStage=1}).improved)
+    for _,location in {"cafe","rooftop"} do
+        assert(play({key=key,practiceStage=3,locationId=location}).passed)
+    end
+    local photo=f.profiles[f.a].album[key]
+    local savedPhoto=encoded(photo)
+    assert(not play({key=key,practiceStage=3,locationId="park"},true).passed)
+    assert(encoded(photo)==savedPhoto and photo.locationId=="rooftop")
+    for _,location in Locations.list do for _,mode in Remix.list do
+        local result=play({key=key,practiceStage=3,locationId=location.id,remixId=mode.id},mode.id=="long" and 2 or nil)
+        assert(result.unlocked and result.passed)
+    end end
+    assert(completed==13 and Remix.progress(photo).collected==6)
+    for _,frame in PhotoStyle.frames do assert(PhotoStyle.unlocked(photo,frame.id)) end
+    assert(not f.invoke(f.a,"pinSouvenir",{key=key,souvenirId="cafe:long"}).error)
+    assert(not f.invoke(f.a,"stylePhoto",{key=key,poseId="dance",frameId="souvenirs"}).error)
+    f.drain();local saved=f.saves[#f.saves].data
+    assert(Logic.validSavedProfile(saved))
+    local rejoined=fixture()
+    rejoined.profiles[rejoined.a]=Logic.normalizeProfile(serde.decode("json",serde.encode("json",saved)),1200)
+    local snapshot=rejoined.invoke(rejoined.a,"snapshot")
+    assert(#snapshot.album==1 and snapshot.matches[1].stage==4)
+    local restored=snapshot.album[1]
+    assert(restored.photoPose=="dance" and restored.photoFrame=="souvenirs" and restored.pinnedSouvenir=="cafe:long")
+    assert(restored.avatarUserId==f.a.UserId and restored.locationId=="rooftop")
+    assert(Remix.progress(restored).collected==6 and PhotoStyle.unlocked(restored,"travel") and PhotoStyle.unlocked(restored,"perfect"))
+    assert(Ideas.build(snapshot)[1].kind=="photo")
+    local revision=rejoined.profiles[rejoined.a].revision
+    assert(not rejoined.invoke(rejoined.a,"stylePhoto",{key=key,poseId="dance",frameId="souvenirs"}).error)
+    assert(rejoined.profiles[rejoined.a].revision==revision and #rejoined.delayed==0)
+    assert(#f.warnings==0 and #rejoined.warnings==0)
 end)
 local passed = 0; for _, record in tests do if record.passed then passed += 1 end end
 fs.writeFile("prototype/evidence/server-request-tests.json", serde.encode("json", { passed = passed, failed = #tests - passed,
