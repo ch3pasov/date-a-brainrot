@@ -146,6 +146,7 @@ local function notifyMatches(news)
 end
 local errors = {
     already_swiped = "Ты уже свайпнул этот вариант.", too_fast = "Дай сигналу немного времени.",
+    ready_first = "Нажми «Начать», когда будешь готов.",
     loading = "Ещё загружаем коллекцию…", busy = "Секунду…",
     load_failed = "Не удалось загрузить историю. Попробуй ещё раз.",
     profile_in_use = "Предыдущая сессия ещё сохраняет историю. Подожди немного.",
@@ -661,8 +662,33 @@ local function syncGameControls()
         body.ScrollBarThickness = body.ScrollingEnabled and 3 or 0
     end
 end
+local function recoverExpiredGame(previous)
+    -- The final answer can reach the server even if its response is lost.
+    task.wait(.08)
+    local snapshot = rpc("snapshot", nil, true)
+    activeGame = nil; gameInputLocked = false
+    closeModal(); activeTab = previous.practice and "album" or "matches"
+    render()
+    if snapshot then
+        if previous.remixId then showRemixes(previous.key) elseif previous.practice then showStory(previous.key) end
+        toast("Раунд уже закрыт. Твой прогресс обновлён.", C.panel)
+        notifyMatches(snapshot.news)
+    else
+        toast("Раунд закрыт. Не удалось обновить прогресс — проверь связь.", C.bad)
+    end
+end
+local function readyGame()
+    if not activeGame or activeGame.stage ~= 3 or not activeGame.awaitingReady or busy or gameInputLocked then return end
+    local token = activeGame.token
+    gameInputLocked = true; syncGameControls()
+    local response, readyError = rpc("readyGame", { token = token })
+    if not activeGame or activeGame.token ~= token then return end
+    if not response and readyError == "expired_game" then recoverExpiredGame(activeGame); return end
+    gameInputLocked = false
+    if response then activeGame = response; render(true) else syncGameControls() end
+end
 local function submitGame(choice)
-    if not activeGame or busy or gameInputLocked or (activeGame.stage == 3 and dateRevealing) then return end
+    if not activeGame or busy or gameInputLocked or activeGame.awaitingReady or (activeGame.stage == 3 and dateRevealing) then return end
     gameInputLocked = true
     syncGameControls()
     local pending = { token = activeGame.token, turn = Games.turn(activeGame), choice = choice }
@@ -674,21 +700,7 @@ local function submitGame(choice)
     if not result then
         if gamePresentation then gamePresentation.clearPreview() end
         if inputError == "expired_game" then
-            local previous = activeGame
-            -- The final answer can reach the server even if its response is lost.
-            -- Refresh before offering another round; do not replay the old input.
-            task.wait(.08)
-            local snapshot = rpc("snapshot", nil, true)
-            activeGame = nil; gameInputLocked = false
-            closeModal(); activeTab = previous.practice and "album" or "matches"
-            render()
-            if snapshot then
-                if previous.remixId then showRemixes(previous.key) elseif previous.practice then showStory(previous.key) end
-                toast("Раунд уже закрыт. Твой прогресс обновлён.", C.panel)
-                notifyMatches(snapshot.news)
-            else
-                toast("Раунд закрыт. Не удалось обновить прогресс — проверь связь.", C.bad)
-            end
+            recoverExpiredGame(activeGame)
             return
         end
         gameInputLocked = false; syncGameControls(); return
@@ -784,7 +796,7 @@ renderGame = function(updateOnly)
     end
     gamePresentation = Presentation.mount(body, session, character, variant, {
         mobile = mobile, width = gameW, height = gameH, immersive = immersive, rootTop = focused and 0 or nil, userId = state.playerUserId or player.UserId, avatarSnapshot = state.avatarSnapshot,
-        submit = submitGame, revealing = function(value) dateRevealing = value end,
+        submit = submitGame, ready = readyGame, revealing = function(value) dateRevealing = value end,
         revealState = dateRevealState,
         dateCollectionState = dateCollectionState,
         reactionState = gameReactionState,

@@ -24,7 +24,7 @@ be pinned as stickers on story photos, replaced or removed without spending them
 All 34 characters now have a personal follow-up story in chat. Reply buttons fit
 the measured text, and short windows scroll instead of clipping longer answers.
 
-321 offline checks and both source builds pass. New UI geometry and actions are
+330 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 
@@ -70,3 +70,5 @@ made to ownership of meme characters, Roblox, or player-created avatar assets.
 The project is released as a prototype. Physical-device performance, audio QA,
 independent friend access, and visual polish remain limited; see
 [RELEASE_NOTES.md](RELEASE_NOTES.md). Development resumed on November 6, 2026.
+
+Dates now wait for a ready button after a short rules card. Retrying a lost start response keeps the same round and order.

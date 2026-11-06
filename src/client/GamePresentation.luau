@@ -11,6 +11,7 @@ local UI = require(script.Parent.UI)
 local Scene = require(script.Parent.SceneViewer)
 local Feedback = require(script.Parent.Feedback)
 local Icons = require(script.Parent.ToyIcons)
+local Briefing = require(script.Parent.DateBriefing)
 local C = UI.colors
 local Presentation = {}
 local function centered(parent, name, text, position, size, font, color, bold)
@@ -247,7 +248,11 @@ function Presentation.mount(body, session, character, variant, options)
             dateScene.setCollected(dateCollectionState)
             updateDots()
         end
-        if session.step == 1 and session.sequence then
+        if session.awaitingReady then
+            controller.revealing = true; options.revealing(true)
+            cue.Visible = false
+            controller.readyButton = Briefing.mount(root, session, { width=w, height=h, ready=options.ready })
+        elseif session.step == 1 and session.sequence then
             revealState = DateReveal.mount(session.sequence, session.token, options.revealState)
             DateReveal.setPaused(revealState, options.revealPaused and options.revealPaused() or false)
             controller.revealing = not DateReveal.current(revealState).finished
@@ -271,6 +276,10 @@ function Presentation.mount(body, session, character, variant, options)
     function controller.setLocked(value)
         controller.locked = value; root:SetAttribute("InputLocked", value or controller.revealing)
         for _, button in controller.buttons do button.Active = not value and not controller.revealing; button.Selectable = button.Active end
+        if controller.readyButton then
+            controller.readyButton.Active = not value; controller.readyButton.Selectable = not value
+            controller.readyButton.Text = value and "Подключаемся…" or "Начать →"
+        end
     end
     local function releasePreview(keepPlayerPose)
         if not previewChoice then return end

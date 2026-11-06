@@ -152,8 +152,11 @@ local function gameView(session)
     elseif session.stage == 2 then
         out.gesture = Locations.gesture(session.attempts + 1, session.gestureSeed); out.serverStart = session.serverStart; out.target = 6; out.hits = session.hits
     else
-        if session.step == 1 then out.sequence = session.sequence end
-        out.revealSeconds = session.revealSeconds or 3; out.revealEnds = session.serverStart + out.revealSeconds; out.theme = session.personality; out.locationId = session.locationId; out.choices = session.choices; out.hits = session.hits
+        out.awaitingReady = session.awaitingReady == true
+        if session.step == 1 and not out.awaitingReady then out.sequence = session.sequence end
+        out.revealSeconds = session.revealSeconds or 3
+        if not out.awaitingReady then out.revealEnds = session.serverStart + out.revealSeconds end
+        out.theme = session.personality; out.locationId = session.locationId; out.choices = session.choices; out.hits = session.hits
     end
     return out
 end
@@ -233,6 +236,7 @@ local function handle(player, action, args)
         if session.stage == 1 then session.chat = Games.chatFor(character, random:NextInteger(1, 2147483646)); session.messages = {} end
         if session.stage == 2 then session.gestureSeed = random:NextInteger(1, Locations.gesturePatternCount); session.hits = {} end
         if session.stage == 3 then
+            session.awaitingReady = true
             session.sequence = {}; session.choices = {}; session.hits = {}
             session.remixId = args.remixId
             if session.remixId then
@@ -244,6 +248,16 @@ local function handle(player, action, args)
             session.total = #session.sequence
         end
         games[player] = session; return gameView(session)
+    elseif action == "readyGame" then
+        local s = games[player]
+        if not s or args.token ~= s.token then return { error = "expired_game" } end
+        if s.stage ~= 3 then return { error = "invalid_stage" } end
+        -- Retrying a lost reply returns the same round, never a fresh clock/order.
+        if s.awaitingReady then
+            s.awaitingReady = false
+            s.started = os.clock(); s.serverStart = workspace:GetServerTimeNow()
+        end
+        return gameView(s)
     elseif action == "cancelGame" then
         games[player] = nil
         return payload(player)

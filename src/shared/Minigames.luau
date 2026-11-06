@@ -151,6 +151,7 @@ function Games.turn(session)
 end
 function Games.applyInput(session, args, now)
     if not session or args.token ~= session.token then return { error = "expired_game" } end
+    if session.awaitingReady then return { error = "ready_first" } end
     if type(args.turn) ~= "number" or args.turn % 1 ~= 0 or args.turn < 1 then return { error = "invalid_request" } end
     if args.turn ~= Games.turn(session) then return { resynced = true } end
     if type(args.choice) ~= "number" and type(args.choice) ~= "string" then return { error = "invalid_choice" } end

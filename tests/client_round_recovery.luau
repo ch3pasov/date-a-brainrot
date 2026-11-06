@@ -59,6 +59,7 @@ local function fixture(stage,practice)
     ]] .. inputSource .. [[
         return {
             call=submitGame,
+            ready=readyGame,
             setGame=function(value) activeGame=value end,
             setPresentation=function(value) gamePresentation=value end,
             flags=function(busyValue,lockedValue,revealingValue) busy=busyValue; gameInputLocked=lockedValue; dateRevealing=revealingValue end,
@@ -77,6 +78,46 @@ test("Unavailable input states never send a request or a preview",function()
         local thread=f.start(); resume(thread)
         assert(coroutine.status(thread)=="dead" and #f.requests==0 and #f.view.previews==0)
     end
+end)
+test("Briefing blocks answer keys and coalesces duplicate ready clicks into one request",function()
+    local f=fixture(3);f.initial.awaitingReady=true
+    local answer=f.start();resume(answer)
+    assert(#f.requests==0 and #f.view.previews==0)
+    local ready=coroutine.create(f.client.ready)
+    assert(resume(ready)=="rpc" and f.requests[1].action=="readyGame" and f.requests[1].args.token=="round")
+    assert(f.client.state().locked)
+    local duplicate=coroutine.create(f.client.ready);resume(duplicate)
+    assert(coroutine.status(duplicate)=="dead" and #f.requests==1)
+    local result={token="round",stage=3,step=1,awaitingReady=false,sequence={1,2,3,4}}
+    resume(ready,result)
+    assert(f.client.state().game==result and not f.client.state().locked and f.renders==1 and f.updates==0)
+    assert(#f.sounds==0 and #f.view.reactions==0)
+end)
+test("A lost ready reply leaves a retryable briefing without auto-starting a new round",function()
+    local f=fixture(3);f.initial.awaitingReady=true
+    local ready=coroutine.create(f.client.ready);resume(ready)
+    resume(ready,nil,"connection_failed")
+    assert(f.client.state().game==f.initial and not f.client.state().locked and f.renders==0)
+    assert(f.view.locks[#f.view.locks]==false)
+    local retry=coroutine.create(f.client.ready);assert(resume(retry)=="rpc")
+    assert(#f.requests==2 and f.requests[2].action=="readyGame" and f.requests[2].args.token=="round")
+    resume(retry,{token="round",stage=3,awaitingReady=false,sequence={1,1,2,3}})
+    assert(f.renders==1 and not f.client.state().game.awaitingReady)
+end)
+test("A late ready response cannot replace a newer session",function()
+    local f=fixture(3);f.initial.awaitingReady=true
+    local ready=coroutine.create(f.client.ready);resume(ready)
+    local newer={token="new",stage=1};f.client.setGame(newer)
+    f.client.flags(false,false,false)
+    resume(ready,{token="round",stage=3,awaitingReady=false,sequence={1,2,3,4}})
+    assert(f.client.state().game==newer and not f.client.state().locked and f.renders==0)
+end)
+test("An expired briefing refreshes progress and leaves the unavailable round",function()
+    local f=fixture(3,true);f.initial.awaitingReady=true;f.initial.remixId="reverse"
+    local ready=coroutine.create(f.client.ready);resume(ready)
+    assert(resume(ready,nil,"expired_game")=="delay")
+    assert(resume(ready)=="rpc");resume(ready,{news={}})
+    assert(f.client.state().game==nil and not f.client.state().locked and #f.remixes==1)
 end)
 test("A failed request clears neutral feedback and preserves the unanswered turn",function()
     local f=fixture(); local thread=f.start(2)

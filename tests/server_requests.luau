@@ -273,6 +273,8 @@ end)
 test("Real server long remix completes six inputs, saves one reward and recovers a lost final reply", function()
     local f = fixture(); local key = completedStory(f)
     local view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="rooftop"})
+    assert(view.awaitingReady and view.sequence == nil)
+    view = f.invoke(f.a,"readyGame",{token=view.token})
     assert(view.total == 6 and #view.sequence == 6 and view.remixId == "long" and math.abs(view.revealSeconds - 4.8) < 1e-8)
     f.drain(); local session = f.api.game(f.a); f.clock += 5
     local finalArgs
@@ -299,6 +301,7 @@ end)
 test("Real server reverse mode uses the opposite order and a cancelled remix grants nothing", function()
     local f = fixture(); local key = completedStory(f)
     local view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="reverse",locationId="cafe"})
+    view = f.invoke(f.a,"readyGame",{token=view.token})
     local sequence = table.clone(view.sequence); f.clock += 4
     for i = 1, 4 do
         local result = f.invoke(f.a,"gameInput",{token=view.token,turn=i,choice=sequence[5-i]})
@@ -306,11 +309,59 @@ test("Real server reverse mode uses the opposite order and a cancelled remix gra
         if i == 4 then assert(result.unlocked and result.score == 1) end
     end
     view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="park"})
+    view = f.invoke(f.a,"readyGame",{token=view.token})
     f.clock += 5
     assert(f.invoke(f.a,"gameInput",{token=view.token,turn=1,choice=view.sequence[1]}).good)
     assert(not f.invoke(f.a,"cancelGame").error and not f.api.game(f.a))
     assert(f.profiles[f.a].album[key].remixScores["park:long"] == nil)
     assert(Remix.progress(f.profiles[f.a].album[key]).collected == 1)
+end)
+test("Date briefing waits indefinitely without disclosing the sequence or accepting guesses",function()
+    local f=fixture();local key=completedStory(f)
+    local view=f.invoke(f.a,"startGame",{key=key,practiceStage=3,locationId="park"})
+    assert(view.awaitingReady and view.sequence==nil and view.revealEnds==nil and view.total==4)
+    f.drain();local before=encoded(f.profiles[f.a]);local session=f.api.game(f.a)
+    f.clock+=600
+    assert(f.invoke(f.a,"gameInput",{token=view.token,turn=1,choice=1}).error=="ready_first")
+    assert(session.step==1 and #session.hits==0 and #session.choices==0 and encoded(f.profiles[f.a])==before)
+    local ready=f.invoke(f.a,"readyGame",{token=view.token})
+    assert(not ready.awaitingReady and #ready.sequence==4 and ready.revealEnds>f.clock)
+    assert(f.invoke(f.a,"gameInput",{token=view.token,turn=1,choice=ready.sequence[1]}).error=="memorize_first")
+    f.clock+=4
+    for i,choice in ready.sequence do
+        local result=f.invoke(f.a,"gameInput",{token=view.token,turn=i,choice=choice})
+        assert(result.good)
+        if i==4 then assert(result.passed and result.score==1 and result.result=="practice") end
+    end
+end)
+test("Lost ready replies retry the same order and clock without another profile write",function()
+    local f=fixture();local key=completedStory(f)
+    local view=f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="cafe"})
+    f.drain();local before=encoded(f.profiles[f.a]);local revision=f.profiles[f.a].revision
+    local ready=f.invoke(f.a,"readyGame",{token=view.token});local started=f.api.game(f.a).started
+    f.clock+=8
+    local retried=f.invoke(f.a,"readyGame",{token=view.token})
+    assert(encoded(ready.sequence)==encoded(retried.sequence) and ready.revealEnds==retried.revealEnds)
+    assert(f.api.game(f.a).started==started and encoded(f.profiles[f.a])==before and #f.delayed==0)
+    assert(f.invoke(f.a,"gameInput",{token=view.token,turn=1,choice=ready.sequence[1]}).good)
+    retried=f.invoke(f.a,"readyGame",{token=view.token})
+    assert(retried.step==2 and retried.sequence==nil and f.profiles[f.a].revision==revision)
+end)
+test("Readiness cannot start a different player's round, an expired token or a chat",function()
+    local f=fixture();local key=completedStory(f)
+    local view=f.invoke(f.a,"startGame",{key=key,practiceStage=3,locationId="park"})
+    local before=encoded(f.api.game(f.a))
+    for _,args in {{},{token=false},{token="stale"}} do
+        assert(f.invoke(f.a,"readyGame",args).error=="expired_game")
+    end
+    assert(f.invoke(f.b,"readyGame",{token=view.token}).error=="expired_game")
+    assert(encoded(f.api.game(f.a))==before)
+    f.invoke(f.a,"cancelGame")
+    assert(f.invoke(f.a,"readyGame",{token=view.token}).error=="expired_game")
+    local other=f.match(f.b);local chat=f.invoke(f.b,"startGame",{key=other})
+    before=encoded(f.api.game(f.b))
+    assert(f.invoke(f.b,"readyGame",{token=chat.token}).error=="invalid_stage")
+    assert(encoded(f.api.game(f.b))==before)
 end)
 test("Photo sticker RPC verifies ownership, saves promptly and makes retries idempotent",function()
     local f=fixture();local key=completedStory(f)
