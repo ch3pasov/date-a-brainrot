@@ -48,7 +48,13 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="album" then
+    if kind=="story" then
+        for _,candidate in Catalog do if #candidate.name>#character.name then character=candidate end end
+        photo.characterId=character.id;photo.key=Logic.key(character.id,"classic")
+        photo.scores={['1']=1,['2']=1,['3']=1};photo.photoFrame="perfect";photo.remixScores={["park:long"]=1};photo.pinnedSouvenir="park:long"
+        options.replay=noop;options.dateAgain=noop;options.remixes=noop
+        box=h.module("src/client/StoryBook.luau",{Collection=Collection,Locations=Locations,Remix=Remix,Album=album,Icons=icons,Sticker=sticker,PhotoFrame=decor}).mount(h.root,character,Config.Variants[1],photo,options).frame
+    elseif kind=="album" then
         local l=h.logical;local shell=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
         local w=l.mobile and 436 or l.width-52
         local bh=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
@@ -194,7 +200,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"album","album_empty","waiting","guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"story","album","album_empty","waiting","guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end

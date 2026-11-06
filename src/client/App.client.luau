@@ -680,22 +680,23 @@ showIdeas = function(scrollPosition,ideaOffset)
     })
     if not restoringModal then Feedback.pop(modalViewer.frame,.94)end
 end
-showStory = function(key)
+showStory = function(key,scrollPosition)
     local photo
     for _, item in state.album do if item.key == key then photo = item; break end end
     if not photo then return end
     local character, variant = Logic.character(photo.characterId), Logic.variant(photo.variantId)
     closeModal()
-    modalRebuild = function() showStory(key) end
+    modalRebuild = function() showStory(key,scrollPosition) end
     modal = UI.overlay(canvas, "StoryOverlay", .06)
     modalViewer = StoryBook.mount(modal, character, variant, photo, {
         mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth, userId = state.playerUserId,
         mount = function(art, options) return mount(art, character.id, variant.id, options) end,
-        back = closeModal,
-        editPhoto = function() showPhotoStudio(key) end,
-        replay = function(stage) closeModal(); startGame(key, stage) end,
-        dateAgain = function() closeModal(); startGame(key, 3) end,
-        remixes = function() showRemixes(key) end,
+        scrollPosition=scrollPosition,scrolled=function(position)scrollPosition=position end,
+        back = function()if not busy then closeModal()end end,
+        editPhoto = function()if not busy then showPhotoStudio(key)end end,
+        replay = function(stage)if busy then return end;closeModal();startGame(key,stage)end,
+        dateAgain = function()if busy then return end;closeModal();startGame(key,3)end,
+        remixes = function()if not busy then showRemixes(key)end end,
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .93) end
 end

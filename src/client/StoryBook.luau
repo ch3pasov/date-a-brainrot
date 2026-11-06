@@ -9,101 +9,125 @@ local Sticker = require(script.Parent.SouvenirSticker)
 local PhotoFrame = require(script.Parent.PhotoFrame)
 local C = UI.colors
 local Book = {}
-
-local function center(parent, name, text, position, size, font, color, bold)
-    local label = UI.label(parent, name, text, position, size, font, color, bold)
-    label.TextXAlignment = Enum.TextXAlignment.Center
+local function center(parent,name,text,position,size,font,color,bold)
+    local label=UI.label(parent,name,text,position,size,font,color,bold)
+    label.TextXAlignment=Enum.TextXAlignment.Center
     return label
 end
-
-function Book.mount(parent, character, variant, photo, options)
-    local mobile = options.mobile
-    local compact = mobile and (UI.scale or 1) < .5
-    local w = compact and math.clamp((options.availableWidth or 480) - 48, 436, 700) or (mobile and 436 or 1020)
-    local passportH=Album.passportHeight(mobile and w-48 or 360)
-    local actionH = math.max(66, UI.touchMinimum or 0)
-    local iconSize = compact and UI.readableSize(38, 18) or 38
-    local stageFont = UI.readableSize(mobile and 14 or 19, 10)
-    local scoreFont = UI.readableSize(mobile and 24 or 29)
-    local nameY = mobile and (compact and 7 + iconSize + 4 or 47) or 12
-    local nameH = math.max(23, math.ceil(stageFont * 1.25))
-    local scoreY = mobile and math.max(70, nameY + nameH) or 40
-    local scoreH = math.max(30, math.ceil(scoreFont * 1.25))
-    local stageH = math.max(100, UI.touchMinimum or 0, scoreY + scoreH + 8)
-    local preferredH = mobile and 574 + stageH + actionH or 618 + actionH
-    local h = math.min(preferredH, (options.availableHeight or 760) - 24)
-    local compression = preferredH - h + (mobile and math.max(0,passportH-33) or 0)
-    local box = UI.frame(parent, "StoryDialog", UDim2.new(.5, -w / 2, .5, -h / 2), UDim2.fromOffset(w, h), C.card, 4)
-    box.ZIndex = 2
-    local page = UI.frame(box, "Paper", UDim2.fromOffset(8, 8), UDim2.new(1, -16, 1, -16), C.panel, 2)
+function Book.mount(parent,character,variant,photo,options)
+    local mobile=options.mobile
+    local w=mobile and math.clamp((options.availableWidth or 480)-48,436,700) or 1020
+    local innerW=w-48
+    local nameFont=UI.readableSize(mobile and 26 or 31)
+    local nameW=mobile and innerW or 690
+    local nameH=math.max(44,UI.textHeight(character.name,nameFont,nameW,true))
+    local perfect=Collection.perfect(photo)
+    local themeText=variant.label..(perfect and " · ИДЕАЛЬНЫЙ ВАЙБ ♥" or " · НАША ИСТОРИЯ")
+    local themeFont=UI.readableSize(12,10)
+    local themeW=mobile and innerW or 258
+    local themeH=math.max(28,UI.textHeight(themeText,themeFont,themeW-14,true)+8)
+    local themeY=mobile and 18+nameH+10 or 35
+    local progress=Remix.progress(photo)
+    local backText,againText="← В альбом","РЕМИКСЫ · "..progress.collected.."/"..progress.total
+    local actionFont=UI.readableSize(17)
+    local backW=mobile and math.floor((w-60)*.42) or 252
+    local againW=w-60-backW
+    local actionH=math.max(66,UI.touchMinimum or 0,UI.textHeight(backText,actionFont,backW-16,true)+12,UI.textHeight(againText,actionFont,againW-16,true)+12)
+    local h=math.min(mobile and 760 or 618+actionH,(options.availableHeight or 760)-24)
+    local footerY=h-actionH-16
+    local box=UI.frame(parent,"StoryDialog",UDim2.new(.5,-w/2,.5,-h/2),UDim2.fromOffset(w,h),C.card,4)
+    box.ZIndex=2
+    local paper=UI.frame(box,"Paper",UDim2.fromOffset(8,8),UDim2.new(1,-16,1,-16),C.panel,2)
     if not mobile then
-        UI.frame(page, "BookFold", UDim2.fromOffset(603, 4), UDim2.new(0, 2, 1, -8), C.card, 0)
-        for i = 1, 8 do
-            local stitch = UI.frame(box, "Binding_" .. i, UDim2.fromOffset(601, 98 + i * 58), UDim2.fromOffset(20, 3), C.ink, 1)
-            stitch.Rotation = -8
-        end
+        UI.frame(paper,"BookFold",UDim2.fromOffset(603,4),UDim2.new(0,2,1,-8),C.card,0)
+        for i=1,8 do UI.frame(box,"Binding_"..i,UDim2.fromOffset(601,98+i*58),UDim2.fromOffset(20,3),C.ink,1).Rotation=-8 end
     end
-    local nameW = mobile and w - 48 or 690
-    center(box, "Name", character.name, UDim2.fromOffset(24, 18), UDim2.fromOffset(nameW, 66), compact and UI.readableSize(26) or (mobile and 26 or 31), C.ink, true)
-    local perfect = Collection.perfect(photo)
-    local badge = UI.pill(box, "Theme", variant.label .. (perfect and " · ИДЕАЛЬНЫЙ ВАЙБ ♥" or " · НАША ИСТОРИЯ"), UDim2.fromOffset(mobile and 24 or 738, mobile and 94 or 35), mobile and w - 48 or 258, perfect and C.yellow or UI.rgb(variant.color))
-    badge.Label.TextSize = UI.readableSize(12, 10)
-    local photoY = mobile and 136 or 120
-    local photoH = (mobile and 330 or 400) - compression
-    local photoW = mobile and w - 48 or 570
-    local postcard = UI.frame(box, "TogetherPostcard", UDim2.fromOffset(24, photoY), UDim2.fromOffset(photoW, photoH), Color3.fromRGB(255, 255, 251), 2)
-    UI.stroke(postcard, C.ink).Thickness = 2
-    local captionH = compact and math.ceil(UI.readableSize(16) * 1.25) or 31
-    local art = UI.frame(postcard, "Photo", UDim2.fromOffset(9, 9), UDim2.new(1, -18, 1, -captionH - 21), C.aqua, 1)
-    local viewer = options.mount(art, {
-        modal = true, scene = true, photo = true, pair = true,
-        locationId = photo.locationId or "park", userId = photo.avatarUserId or options.userId,
-        avatarSnapshot = photo.avatarSnapshot, photoPose = photo.photoPose,
-    })
-    Sticker.mount(art, photo)
-    PhotoFrame.mount(art,photo)
+    center(box,"Name",character.name,UDim2.fromOffset(24,18),UDim2.fromOffset(nameW,nameH),nameFont,C.ink,true)
+    local badge=UI.pill(box,"Theme",themeText,UDim2.fromOffset(mobile and 24 or 738,themeY),themeW,perfect and C.yellow or UI.rgb(variant.color))
+    badge.Size=UDim2.fromOffset(themeW,themeH);badge.Label.TextSize=themeFont
+    local surface=box
+    local viewportH
+    if mobile then
+        local top=themeY+themeH+14
+        viewportH=footerY-top-12
+        surface=UI.new("ScrollingFrame",{Name="StoryContent",Position=UDim2.fromOffset(24,top),Size=UDim2.fromOffset(innerW,viewportH),
+            BackgroundTransparency=1,BorderSizePixel=0,CanvasSize=UDim2.fromOffset(0,0),ScrollBarThickness=3},box)
+        if options.scrollPosition then surface.CanvasPosition=options.scrollPosition end
+        if options.scrolled then surface:GetPropertyChangedSignal("CanvasPosition"):Connect(function()options.scrolled(surface.CanvasPosition)end)end
+    end
+    local memory=Collection.memento(character)
+    local memoryFont=UI.readableSize(18)
+    local memoryW=mobile and innerW or 546
+    local memoryH=UI.textHeight(memory,memoryFont,memoryW,false)
+    local photoY=mobile and 0 or math.max(120,18+nameH+20)
+    local photoW=mobile and innerW or 570
+    local photoH=mobile and math.max(260,math.min(360,math.ceil(120/(UI.scale or 1)))) or math.min(400,footerY-photoY-memoryH-30)
+    local caption=Locations.get(photo.locationId).name
+    local captionFont=UI.readableSize(mobile and 16 or 20)
+    local captionH=math.max(31,UI.textHeight(caption,captionFont,photoW-24,true))
+    local postcard=UI.frame(surface,"TogetherPostcard",UDim2.fromOffset(mobile and 0 or 24,photoY),UDim2.fromOffset(photoW,photoH),Color3.fromRGB(255,255,251),2)
+    UI.stroke(postcard,C.ink).Thickness=2
+    local art=UI.frame(postcard,"Photo",UDim2.fromOffset(9,9),UDim2.new(1,-18,1,-captionH-21),C.aqua,1)
+    local viewer=options.mount(art,{modal=true,scene=true,photo=true,pair=true,locationId=photo.locationId or "park",
+        userId=photo.avatarUserId or options.userId,avatarSnapshot=photo.avatarSnapshot,photoPose=photo.photoPose})
+    Sticker.mount(art,photo);PhotoFrame.mount(art,photo)
     if options.editPhoto then
-        local captionFont=UI.readableSize(12,10)
-        local badge=UI.pill(art,"PhotoStudioHint","ПОЗА И РАМКА →",UDim2.fromOffset(8,8),math.max(180,captionFont*9),C.yellow)
-        badge.Size=UDim2.fromOffset(badge.Size.X.Offset,math.ceil(captionFont*1.4));badge.Label.TextSize=captionFont;badge.ZIndex=5
+        local font=UI.readableSize(12,10)
+        local text="ПОЗА И РАМКА →"
+        local tagW=math.min(photoW-34,math.max(180,font*12))
+        local tag=UI.pill(art,"PhotoStudioHint",text,UDim2.fromOffset(8,8),tagW,C.yellow)
+        tag.Size=UDim2.fromOffset(tagW,UI.textHeight(text,font,tagW-14,true)+8);tag.Label.TextSize=font;tag.ZIndex=5
         local edit=UI.new("TextButton",{Name="EditPhoto",Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=6},postcard)
         edit.Activated:Connect(options.editPhoto)
     end
-    center(postcard, "PhotoLocation", Locations.get(photo.locationId).name, UDim2.new(0, 12, 1, -captionH - 8), UDim2.new(1, -24, 0, captionH), UI.readableSize(mobile and 16 or 20), C.ink, true)
-    local tape = UI.frame(postcard, "Tape", UDim2.new(.5, -42, 0, -8), UDim2.fromOffset(84, 18), C.yellow, 1)
-    tape.Rotation = -4; tape.BackgroundTransparency = .18; tape.ZIndex = 3
-    local stageY = mobile and 520 - compression or 120
-    local passportY = mobile and 477 - compression or 3 * (stageH + 14) + 132
-    if mobile then stageY = math.max(stageY, passportY + passportH + 10) end
-    local stages = { { "Переписка", Icons.phone }, { "Звонок", Icons.video }, { "Свидание", Icons.photo } }
-    for i, stage in stages do
-        local cellW = mobile and (w - 64) / 3 or 360
-        local x = mobile and 24 + (i - 1) * (cellW + 8) or 636
-        local y = mobile and stageY or stageY + (i - 1) * (stageH + 14)
-        local panel = UI.button(box, "ReplayStage_" .. i, "", UDim2.fromOffset(x, y), UDim2.fromOffset(cellW, stageH), C.card, function() options.replay(i) end)
-        local score = math.floor(((photo.scores or {})[tostring(i)] or 0) * 100 + .5)
-        stage[2](panel, UDim2.fromOffset(mobile and (cellW - iconSize) / 2 or 17, mobile and 7 or 18), UDim2.fromOffset(mobile and iconSize or 62, mobile and iconSize or 62))
-        local textX = mobile and 2 or 99
-        local textW = mobile and cellW - 4 or cellW - 113
-        local name = UI.label(panel, "Stage", stage[1], UDim2.fromOffset(textX, nameY), UDim2.fromOffset(textW, nameH), stageFont, C.ink, true)
-        local value = UI.label(panel, "BestScore", score .. "%", UDim2.fromOffset(textX, scoreY), UDim2.fromOffset(textW, scoreH), scoreFont, C.mint, true)
-        if mobile then name.TextXAlignment = Enum.TextXAlignment.Center; value.TextXAlignment = Enum.TextXAlignment.Center
-        else UI.label(panel, "ReplayArrow", "→", UDim2.new(1, -41, .5, -17), UDim2.fromOffset(29, 34), 27, C.pink, true) end
+    center(postcard,"PhotoLocation",caption,UDim2.new(0,12,1,-captionH-8),UDim2.new(1,-24,0,captionH),captionFont,C.ink,true)
+    local tape=UI.frame(postcard,"Tape",UDim2.new(.5,-42,0,-8),UDim2.fromOffset(84,18),C.yellow,1)
+    tape.Rotation=-4;tape.BackgroundTransparency=.18;tape.ZIndex=3
+    local memoryY=photoY+photoH+14
+    center(surface,"Memory",memory,UDim2.fromOffset(mobile and 0 or 36,memoryY),UDim2.fromOffset(memoryW,memoryH),memoryFont,C.muted)
+    local stages={{"Переписка",Icons.phone},{"Звонок",Icons.video},{"Свидание",Icons.photo}}
+    local stageFont=UI.readableSize(mobile and 14 or 19,10)
+    local scoreFont=UI.readableSize(mobile and 24 or 29)
+    local cellW=mobile and (innerW-16)/3 or 360
+    local iconSize=mobile and UI.readableSize(38,18) or 62
+    local stageNameY=mobile and iconSize+11 or 12
+    local textW=mobile and cellW-4 or cellW-113
+    local stageNameH=0
+    for _,stage in stages do stageNameH=math.max(stageNameH,UI.textHeight(stage[1],stageFont,textW,true))end
+    local scoreY=stageNameY+stageNameH+6
+    local scoreH=UI.textHeight("100%",scoreFont,textW,true)
+    local stageH=math.max(100,UI.touchMinimum or 0,scoreY+scoreH+10)
+    local passportW=mobile and innerW or 360
+    local passportH=Album.passportHeight(passportW)
+    local passportY=mobile and memoryY+memoryH+14 or photoY+stageH*3+42
+    local stageY=mobile and passportY+passportH+16 or photoY
+    for i,stage in stages do
+        local x=mobile and (i-1)*(cellW+8) or 636
+        local y=mobile and stageY or stageY+(i-1)*(stageH+14)
+        local panel=UI.button(surface,"ReplayStage_"..i,"",UDim2.fromOffset(x,y),UDim2.fromOffset(cellW,stageH),C.card,function()options.replay(i)end)
+        stage[2](panel,UDim2.fromOffset(mobile and (cellW-iconSize)/2 or 17,mobile and 7 or 18),UDim2.fromOffset(iconSize,iconSize))
+        local score=math.floor(((photo.scores or {})[tostring(i)] or 0)*100+.5)
+        local textX=mobile and 2 or 99
+        local name=UI.label(panel,"Stage",stage[1],UDim2.fromOffset(textX,stageNameY),UDim2.fromOffset(textW,stageNameH),stageFont,C.ink,true)
+        local value=UI.label(panel,"BestScore",score.."%",UDim2.fromOffset(textX,scoreY),UDim2.fromOffset(textW,scoreH),scoreFont,C.mint,true)
+        if mobile then name.TextXAlignment=Enum.TextXAlignment.Center;value.TextXAlignment=Enum.TextXAlignment.Center
+        else UI.label(panel,"ReplayArrow","→",UDim2.new(1,-41,.5,-17),UDim2.fromOffset(29,34),27,C.pink,true)end
     end
-    Album.passport(box, photo, UDim2.fromOffset(mobile and 24 or 636, passportY), UDim2.fromOffset(mobile and w - 48 or 360, passportH))
-    if not mobile then
-        center(box, "Memory", Collection.memento(character), UDim2.fromOffset(36, 532 - compression), UDim2.fromOffset(546, 55), UI.readableSize(18), C.muted)
+    Album.passport(surface,photo,UDim2.fromOffset(mobile and 0 or 636,passportY),UDim2.fromOffset(passportW,passportH))
+    local hint="Выбери этап — сыграем ещё?"
+    local hintFont=UI.readableSize(12,10)
+    local hintH=UI.textHeight(hint,hintFont,passportW,false)
+    local hintY=mobile and stageY+stageH+10 or passportY+passportH+10
+    center(surface,"ReplayHint",hint,UDim2.fromOffset(mobile and 0 or 636,hintY),UDim2.fromOffset(passportW,hintH),hintFont,C.muted)
+    if mobile then
+        local contentH=hintY+hintH+8
+        surface.CanvasSize=UDim2.fromOffset(0,contentH);surface.ScrollingEnabled=contentH>viewportH
+        surface.ScrollBarThickness=surface.ScrollingEnabled and 3 or 0
     end
-    local hintY = mobile and stageY + stageH + 3 or passportY + passportH + 10
-    local replayHint = center(box, "ReplayHint", "Выбери этап — сыграем ещё?", UDim2.fromOffset(mobile and 24 or 636, hintY), UDim2.fromOffset(mobile and w - 48 or 360, 24), UI.readableSize(12, 10), C.muted)
-    replayHint.Visible = not compact
-    local footerY = h - actionH - 16
-    local backW = compact and math.max(142, math.ceil(UI.readableSize(17) * 5.5)) or (mobile and 142 or 252)
-    local back = UI.button(box, "CloseStory", "← В альбом", UDim2.fromOffset(24, footerY), UDim2.fromOffset(backW, actionH), C.card, options.back)
-    back.TextSize = UI.readableSize(17)
-    local progress = Remix.progress(photo)
-    local again = UI.button(box, "DateAgain", "РЕМИКСЫ · " .. progress.collected .. "/" .. progress.total, UDim2.fromOffset(36 + backW, footerY), UDim2.fromOffset(w - 60 - backW, actionH), C.mint, options.remixes or options.dateAgain)
-    again.TextColor3 = C.panel; again.TextSize = UI.readableSize(17)
-    return { frame = box, dispose = function() if viewer then viewer.dispose(); viewer = nil end end }
+    local back=UI.button(box,"CloseStory",backText,UDim2.fromOffset(24,footerY),UDim2.fromOffset(backW,actionH),C.card,options.back)
+    back.TextSize=actionFont;back.TextWrapped=true
+    local again=UI.button(box,"DateAgain",againText,UDim2.fromOffset(36+backW,footerY),UDim2.fromOffset(againW,actionH),C.mint,options.remixes or options.dateAgain)
+    again.TextColor3=C.panel;again.TextSize=actionFont;again.TextWrapped=true
+    return {frame=box,content=mobile and surface or nil,dispose=function()if viewer then viewer.dispose();viewer=nil end end}
 end
 return Book

@@ -108,6 +108,11 @@ Full albums keep usable browsing space on short screens, with compact totals and
 measured photo captions. Venue stamps fit their text in the album, story and selfie
 result. All 23 pages are checked across seven window sizes.
 
+Phone story books now show each character's personal photo memory, with measured
+text, scrollable content and fixed replay navigation. Reading survives resizing;
+busy requests keep secondary actions from closing the story. The wide layout
+retains its two-page book design.
+
 433 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have

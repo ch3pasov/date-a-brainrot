@@ -1,146 +1,140 @@
--- Actual StoryBook, passport and UI touch/readability functions. UI instances
--- and the scene mount are controlled; this does not render Roblox fonts.
-local fs = require("@lune/fs")
-local luau = require("@lune/luau")
-local roblox = require("@lune/roblox")
-local serde = require("@lune/serde")
-local Screen = require("../src/shared/Layout")
-local Collection = require("../src/shared/Collection")
-local Catalog = require("../src/shared/Catalog")
-local Locations = require("../src/shared/Locations")
-local Remix = require("../src/shared/DateRemix")
-local source = fs.readFile("src/client/StoryBook.luau")
-local uiSource = fs.readFile("src/client/UI.luau")
-local albumSource = fs.readFile("src/client/Album.luau")
-local tests = {}
-local function test(name, fn)
-    local ok, err = pcall(fn)
-    table.insert(tests, { name = name, passed = ok, error = if ok then nil else tostring(err) })
+local Harness=require("./support/ui_harness")
+local Collection=require("../src/shared/Collection")
+local Catalog=require("../src/shared/Catalog")
+local Config=require("../src/shared/Config")
+local Logic=require("../src/shared/GameLogic")
+local Locations=require("../src/shared/Locations")
+local Remix=require("../src/shared/DateRemix")
+local fs=require("@lune/fs")
+local luau=require("@lune/luau")
+local serde=require("@lune/serde")
+local tests={}
+local function test(name,fn)
+    local ok,err=pcall(fn);table.insert(tests,{name=name,passed=ok,error=if ok then nil else tostring(err)})
+    assert(ok,name..": "..tostring(err))
 end
-local function section(text, first, last)
-    local a = assert(text:find(first, 1, true))
-    return text:sub(a, assert(text:find(last, a, true)) - 1)
-end
-local function fixture(width, height, character)
-    local logical = Screen.resolve(width, height - 58, true)
-    local f = { logical = logical, replays = {}, again = 0, back = 0, disposed = 0, edits = 0 }
-    local function node(class, props, parent)
-        local value = { ClassName = class, Parent = parent, children = {}, attributes = {} }
-        for key, field in props do value[key] = field end
-        function value:FindFirstChild(name) return self.children[name] end
-        function value:SetAttribute(name, field) self.attributes[name] = field end
-        function value:GetPropertyChangedSignal() return { Connect = function() end } end
-        value.Activated = { Connect = function(_, callback) value.action = callback end }
-        setmetatable(value, { __index = function(self, key) return self.children[key] end })
-        if parent then parent.children[value.Name] = value end
-        return value
-    end
-    local colors = {}
-    for _, name in { "panel", "card", "ink", "mint", "muted", "aqua", "yellow", "line", "text", "pink" } do colors[name] = roblox.Color3.fromRGB(29, 63, 53) end
-    local ui = { colors = colors, scale = logical.scale, touchMinimum = logical.touchMinimum, new = node }
-    function ui.frame(parent, name, position, size, color)
-        return node("Frame", { Name = name, Position = position, Size = size, BackgroundColor3 = color }, parent)
-    end
-    function ui.label(parent, name, text, position, size, font)
-        return node("TextLabel", { Name = name, Text = text, Position = position, Size = size, TextSize = font }, parent)
-    end
-    ui.round = function() end
-    function ui.stroke(parent) return node("UIStroke", { Name = "UIStroke" }, parent) end
-    ui.rgb = function(value) return roblox.Color3.new(value[1], value[2], value[3]) end
-    local enum = { TextXAlignment = { Center = "center", Left = "left" }, Font = { GothamBlack = "bold" } }
-    luau.load(section(uiSource, "function UI.button(", "\nfunction UI.rgb(") .. "\n" ..
-        section(uiSource, "function UI.readableSize(", "\nfunction UI.clear("), { environment = {
-        UI = ui, UDim2 = roblox.UDim2, Enum = enum, Feedback = { bind = function() end },
-    } })()
-    local albumFirst=assert(albumSource:find("local C = UI.colors",1,true))
-    local album=luau.load(albumSource:sub(albumFirst),{environment={Collection=Collection,Locations=Locations,UI=ui,UDim2=roblox.UDim2,Enum=enum}})()
-    local icons = {}
-    for _, name in { "phone", "video", "photo" } do
-        icons[name] = function(parent, position, size) return ui.frame(parent, "Icon_" .. name, position, size) end
-    end
-    local bookFirst = assert(source:find("local C = UI.colors", 1, true))
-    local book = luau.load(source:sub(bookFirst), { environment = {
-        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons, Sticker = {mount=function() end}, PhotoFrame = {mount=function()end},
-        Color3 = roblox.Color3, UDim2 = roblox.UDim2, Enum = enum,
-    } })()
-    f.ui=ui
-    f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true }, photoPose = "heart",
-        scores = { ["1"] = 1, ["2"] = 1, ["3"] = 1 }, visitedLocations = { cafe = true } }
-    f.controller = book.mount(node("Frame", { Name = "Overlay" }), character or { name = "Glorbo Fruttodrillo", personality = "nature" },
-        { label = "Золотой", color = { 1, 1, 0 } }, f.photo, {
-        mobile = logical.mobile, availableHeight = logical.height, availableWidth = width / logical.scale,
-        userId = 1, mount = function(_, options) f.scene = options; return { dispose = function() f.disposed += 1 end } end,
-        replay = function(stage) table.insert(f.replays, stage) end,
-        dateAgain = function() f.again += 1 end, back = function() f.back += 1 end,
-        editPhoto = function() f.edits += 1 end,
-    })
+local rect=Harness.rect
+local screens={{240,320},{240,650},{280,320},{320,370},{320,480},{390,650},{1280,720}}
+local function fixture(screen,character,variant)
+    local f=Harness.new(screen[1],screen[2]);f.replays={};f.again=0;f.back=0;f.edits=0;f.disposed=0
+    local icons=f.module("src/client/ToyIcons.luau")
+    local album=f.module("src/client/Album.luau",{Collection=Collection,Locations=Locations})
+    local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=Remix,Icons=icons})
+    local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
+    local book=f.module("src/client/StoryBook.luau",{Collection=Collection,Locations=Locations,Remix=Remix,Album=album,Icons=icons,Sticker=sticker,PhotoFrame=frame})
+    local options=f.options()
+    options.mount=function(_,settings)f.scene=settings;return {dispose=function()f.disposed+=1 end}end
+    options.replay=function(stage)table.insert(f.replays,stage)end
+    options.dateAgain=function()f.again+=1 end;options.back=function()f.back+=1 end;options.editPhoto=function()f.edits+=1 end
+    options.scrollPosition=f.environment.Vector2.new(0,80);options.scrolled=function(value)f.reading=value end
+    f.character=character or Catalog[1];f.variant=variant or Config.Variants[1]
+    f.photo={key=Logic.key(f.character.id,f.variant.id),locationId="cafe",avatarUserId=42,avatarSnapshot={saved=true},photoPose="heart",photoFrame="perfect",
+        scores={['1']=1,['2']=1,['3']=1},visitedLocations={cafe=true},remixScores={["cafe:long"]=1},pinnedSouvenir="cafe:long"}
+    local before=serde.encode("json",f.photo)
+    f.controller=book.mount(f.root,f.character,f.variant,f.photo,options)
+    assert(serde.encode("json",f.photo)==before,"Opening a story mutates saved progress")
+    f.box=f.controller.frame;f.content=f.controller.content or f.box
     return f
 end
-local function rect(value, parentWidth, parentHeight)
-    return { x = value.Position.X.Scale * parentWidth + value.Position.X.Offset,
-        y = value.Position.Y.Scale * parentHeight + value.Position.Y.Offset,
-        w = value.Size.X.Scale * parentWidth + value.Size.X.Offset,
-        h = value.Size.Y.Scale * parentHeight + value.Size.Y.Offset }
+local function fits(f,node,pw,ph)
+    local r=rect(node,pw,ph)
+    assert(r.w>0 and f.ui.textHeight(node.Text,node.TextSize,r.w,node.Font=="bold")<=r.h,node.Name.." clips text")
+    assert(r.x>=0 and r.y>=0 and r.x+r.w<=pw+1 and r.y+r.h<=ph+1,node.Name.." outside content")
+    assert(node.TextSize*f.logical.scale>=9.9,node.Name.." too small")
+    return r
 end
-test("Tiny story uses the available width rather than a narrow strip", function()
-    for _, screen in { {280,320}, {320,370} } do
-        local f = fixture(screen[1], screen[2]); local box = f.controller.frame
-        assert(box.Size.X.Offset * f.logical.scale >= screen[1] * .8, "More than20% width is needlessly unused")
-        assert(box.children.Name.TextSize * f.logical.scale >= 12, "The story name is below12 physical pixels")
-    end
-end)
-test("Actual story text, passport and 44px actions stay separate at all checked sizes", function()
-    for _, screen in { {240,320}, {240,650}, {280,320}, {320,370}, {320,480}, {390,650}, {1280,720} } do
-        local f = fixture(screen[1], screen[2]); local box = f.controller.frame
-        local w, h, scale = box.Size.X.Offset, box.Size.Y.Offset, f.logical.scale
-        local footer = rect(box.CloseStory, w, h)
-        local passport = rect(box.DatePassport, w, h)
-        local stamps=rect(box.DatePassport.Stamps,passport.w,passport.h)
+test("Every character and variant keeps complete story text and personal memory on seven screens",function()
+    for _,screen in screens do for _,character in Catalog do for _,variant in Config.Variants do
+        local f=fixture(screen,character,variant);local box=f.box;local w,h=box.Size.X.Offset,box.Size.Y.Offset
+        fits(f,box.children.Name,w,h)
+        local theme=rect(box.Theme,w,h);fits(f,box.Theme.Label,theme.w,theme.h)
+        local surface=f.content;local sw=f.logical.mobile and surface.Size.X.Offset or w
+        local sh=f.logical.mobile and surface.CanvasSize.Y.Offset or h
+        local photo=rect(surface.TogetherPostcard,sw,sh)
+        fits(f,surface.TogetherPostcard.PhotoLocation,photo.w,photo.h)
+        local art=rect(surface.TogetherPostcard.Photo,photo.w,photo.h)
+        assert(art.h*f.logical.scale>=80)
+        local tag=rect(surface.TogetherPostcard.Photo.PhotoStudioHint,art.w,art.h)
+        fits(f,surface.TogetherPostcard.Photo.PhotoStudioHint.Label,tag.w,tag.h)
+        fits(f,surface.Memory,sw,sh);assert(surface.Memory.Text==Collection.memento(character))
+        local passport=rect(surface.DatePassport,sw,sh);fits(f,surface.DatePassport.Progress,passport.w,passport.h)
+        local stamps=rect(surface.DatePassport.Stamps,passport.w,passport.h)
         for _,place in Locations.list do
-            local stamp=box.DatePassport.Stamps.children["Place_"..place.id];local r=rect(stamp,stamps.w,stamps.h)
-            local label=rect(stamp.Place,r.w,r.h)
-            assert(f.ui.textHeight(stamp.Place.Text,stamp.Place.TextSize,label.w,true)<=label.h,"Story passport clips a place name")
+            local stamp=surface.DatePassport.Stamps.children["Place_"..place.id];local r=rect(stamp,stamps.w,stamps.h)
+            fits(f,stamp.Place,r.w,r.h)
         end
-        for i = 1, 3 do
-            local button = box["ReplayStage_" .. i]; local b = rect(button, w, h)
-            assert(b.w * scale >= 44 and b.h * scale >= 44)
-            assert(b.x >= 0 and b.x + b.w <= w)
-            if f.logical.mobile then assert(b.y >= passport.y + passport.h + 4,string.format("%dx%d stage %.2f passport %.2f+%.2f",screen[1],screen[2],b.y,passport.y,passport.h)) end
-            assert(b.y + b.h + 8 <= footer.y, "A replay control overlaps the footer")
-            for _, name in { "Stage", "BestScore" } do
-                local label = button[name]; local r = rect(label, b.w, b.h)
-                assert(r.h >= label.TextSize * 1.15, "The enlarged text does not fit its own line")
-                assert(r.y + r.h <= b.h)
+        for i=1,3 do
+            local button=surface.children["ReplayStage_"..i];local r=rect(button,sw,sh)
+            fits(f,button.Stage,r.w,r.h);fits(f,button.BestScore,r.w,r.h)
+        end
+        fits(f,surface.ReplayHint,sw,sh);fits(f,box.CloseStory,w,h);fits(f,box.DateAgain,w,h)
+    end end end
+end)
+test("Short stories scroll complete photo content while all footer actions remain fixed and readable",function()
+    for _,screen in screens do
+        local longest=Catalog[1];for _,character in Catalog do if #character.name>#longest.name then longest=character end end
+        local f=fixture(screen,longest);local box=f.box;local w,h=box.Size.X.Offset,box.Size.Y.Offset
+        local back,again=rect(box.CloseStory,w,h),rect(box.DateAgain,w,h)
+        assert(w*f.logical.scale<=screen[1] and h<=f.logical.height)
+        assert(back.w*f.logical.scale>=44 and back.h*f.logical.scale>=44 and again.w*f.logical.scale>=44 and again.h*f.logical.scale>=44)
+        assert(back.x+back.w+8<=again.x and again.y+again.h<=h-12)
+        if f.logical.mobile then
+            local view=rect(f.content,w,h);local title=rect(box.children.Name,w,h);local theme=rect(box.Theme,w,h)
+            assert(title.y+title.h+8<=theme.y and theme.y+theme.h+12<=view.y)
+            assert(view.h*f.logical.scale>=60 and view.y+view.h+10<=back.y)
+            local previous=0
+            for _,name in {"TogetherPostcard","Memory","DatePassport","ReplayStage_1","ReplayHint"}do
+                local r=rect(f.content.children[name],view.w,f.content.CanvasSize.Y.Offset)
+                assert(r.y>=previous and r.y+r.h<=f.content.CanvasSize.Y.Offset,name.." overlaps story content")
+                previous=r.y+r.h
             end
+            assert(f.content.CanvasPosition.Y==80)
+            f.content.CanvasPosition=f.environment.Vector2.new(0,180);f.content.signals.CanvasPosition();assert(f.reading.Y==180)
+            if f.content.CanvasSize.Y.Offset>view.h then assert(f.content.ScrollingEnabled and f.content.ScrollBarThickness>0)end
+        else
+            assert(f.controller.content==nil)
+            for _,name in {"Memory","ReplayHint","DatePassport"}do local r=rect(box.children[name],w,h);assert(r.y+r.h+8<=back.y)end
         end
-        local hint = rect(box.ReplayHint, w, h)
-        if box.ReplayHint.Visible ~= false then assert(hint.y + hint.h + 4 <= footer.y, "Replay hint overlaps the footer") end
-        local progress = box.DatePassport.Progress
-        assert(progress.Size.X.Offset >= progress.TextSize * 2, "The visited count can be clipped")
-        local again = rect(box.DateAgain, w, h)
-        assert(footer.w * scale >= 44 and footer.h * scale >= 44)
-        assert(again.w * scale >= 44 and again.h * scale >= 44 and footer.x + footer.w + 8 <= again.x)
+        local sw=f.logical.mobile and f.content.Size.X.Offset or w
+        local sh=f.logical.mobile and f.content.CanvasSize.Y.Offset or h
+        for i=1,3 do local r=rect(f.content.children["ReplayStage_"..i],sw,sh);assert(r.w*f.logical.scale>=44 and r.h*f.logical.scale>=44)end
     end
 end)
-test("The wide story book uses every character's own short photo memory",function()
-    for _,character in Catalog do
-        local f=fixture(1280,720,character);local box=f.controller.frame;local memory=box.Memory
-        assert(memory.Text==Collection.memento(character))
-        local lines=math.ceil(utf8.len(memory.Text)*memory.TextSize*.75/memory.Size.X.Offset)
-        assert(math.ceil(lines*memory.TextSize*1.35)<=memory.Size.Y.Offset)
-        assert(memory.Position.Y.Offset+memory.Size.Y.Offset+8<=box.CloseStory.Position.Y.Offset)
+test("Story actions preserve saved photo identity, decoration and a single viewer disposal",function()
+    for _,screen in {{240,320},{390,650},{1280,720}}do
+        local f=fixture(screen)
+        for i=1,3 do f.content.children["ReplayStage_"..i].action()end
+        f.box.DateAgain.action();f.box.CloseStory.action();f.content.TogetherPostcard.EditPhoto.action()
+        f.controller.dispose();f.controller.dispose()
+        assert(f.replays[1]==1 and f.replays[2]==2 and f.replays[3]==3 and f.again==1 and f.back==1 and f.edits==1)
+        assert(f.scene.userId==42 and f.scene.avatarSnapshot==f.photo.avatarSnapshot and f.scene.locationId=="cafe" and f.scene.photoPose=="heart" and f.disposed==1)
+        assert(f.content.TogetherPostcard.Photo.PinnedSouvenir:GetAttribute("SouvenirId")=="cafe:long")
+        assert(f.content.TogetherPostcard.Photo.PhotoFrame:GetAttribute("FrameId")=="perfect")
     end
 end)
-test("Compact book preserves saved photo identity and each action", function()
-    local f = fixture(280,320); local box = f.controller.frame
-    for i = 1, 3 do box["ReplayStage_" .. i].action() end
-    box.DateAgain.action(); box.CloseStory.action(); box.TogetherPostcard.EditPhoto.action(); f.controller.dispose(); f.controller.dispose()
-    assert(f.replays[1] == 1 and f.replays[2] == 2 and f.replays[3] == 3 and f.again == 1 and f.back == 1)
-    assert(f.scene.locationId == "cafe" and f.scene.userId == 42 and f.scene.avatarSnapshot == f.photo.avatarSnapshot and f.disposed == 1)
-    assert(f.scene.photoPose == "heart" and f.edits == 1)
+test("Actual client restores story reading and rejects secondary actions while a request is pending",function()
+    local source=fs.readFile("src/client/App.client.luau")
+    local first=assert(source:find("showStory = function(",1,true));local last=assert(source:find("showPhotoStudio = function(",first,true))
+    local capture={events={}};local photo={key=Logic.key(Catalog[1].id,"classic"),characterId=Catalog[1].id,variantId="classic"}
+    local function record(...)table.insert(capture.events,{...})end
+    local api=luau.load([[
+        local showStory,modal,modalViewer,modalRebuild,busy
+    ]]..source:sub(first,last-1)..[[
+        return {open=showStory,rebuild=function()modalRebuild()end,lock=function(value)busy=value end}
+    ]],{environment={Logic=Logic,state={album={photo}},UI={availableWidth=652,overlay=function()return {}end},height=760,mobile=true,
+        closeModal=function()record("close")end,Feedback={pop=function()end},
+        showPhotoStudio=function(key)record("photo",key)end,showRemixes=function(key)record("remixes",key)end,startGame=function(key,stage)record("play",key,stage)end,
+        StoryBook={mount=function(_,_,_,_,options)capture.options=options;return {frame={}}end},
+    }})()
+    api.open(photo.key);capture.options.scrolled({Y=160});api.rebuild();assert(capture.options.scrollPosition.Y==160)
+    local options=capture.options;local before=#capture.events
+    api.lock(true);options.back();options.editPhoto();options.remixes();options.replay(2);options.dateAgain();assert(#capture.events==before)
+    api.rebuild();assert(capture.options.scrollPosition.Y==160,"A busy resize loses the story")
+    api.lock(false);options.replay(2);assert(capture.events[#capture.events][1]=="play" and capture.events[#capture.events][2]==photo.key and capture.events[#capture.events][3]==2)
+    options.editPhoto();assert(capture.events[#capture.events][1]=="photo")
+    options.remixes();assert(capture.events[#capture.events][1]=="remixes")
+    before=#capture.events;api.open("missing");assert(#capture.events==before)
 end)
-local passed = 0;for _, record in tests do if record.passed then passed += 1 end end
-fs.writeFile("prototype/evidence/story-book-tests.json", serde.encode("json", { passed = passed, failed = #tests-passed, total = #tests,
-    tests = tests, scope = "Real StoryBook/passport/UI touch sizing; controlled instances and scene callback, conservative font rectangles, not engine font measurement" }, true))
-for _, record in tests do assert(record.passed, record.name .. ": " .. tostring(record.error)) end
-print("Passed " .. passed .. " actual story book checks")
+fs.writeFile("prototype/evidence/story-book-tests.json",serde.encode("json",{passed=#tests,tests=tests,
+    scope="Production book, UI and client handlers with controlled geometry/fonts/viewer; no Roblox rendering"},true))
+print("Passed "..#tests.." actual story book checks")
