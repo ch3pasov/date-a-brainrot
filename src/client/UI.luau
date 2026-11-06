@@ -1,4 +1,5 @@
 local Feedback = require(script.Parent.Feedback)
+local TextService = game:GetService("TextService")
 local UI = {}
 UI.colors = {
     bg = Color3.fromRGB(255, 243, 213), panel = Color3.fromRGB(255, 252, 237), card = Color3.fromRGB(248, 224, 167),
@@ -75,6 +76,20 @@ end
 function UI.rgb(v) return Color3.new(v[1], v[2], v[3]) end
 function UI.readableSize(size, minimumPixels)
     return math.max(size, math.ceil((minimumPixels or 12) / (UI.scale or 1)))
+end
+function UI.textHeight(text, fontSize, width, bold)
+    local ok, bounds = pcall(function()
+        return TextService:GetTextSize(text, fontSize, bold and Enum.Font.GothamBlack or Enum.Font.Gotham, Vector2.new(math.max(1,width), 10000))
+    end)
+    if ok and bounds and type(bounds.Y)=="number" and bounds.Y==bounds.Y and bounds.Y>=0 and bounds.Y<math.huge then
+        return math.ceil(math.max(fontSize*1.3,bounds.Y))
+    end
+    local lines=0
+    for line in (text.."\n"):gmatch("(.-)\n") do
+        local length=utf8.len(line) or #line
+        lines+=math.max(1,math.ceil(length*fontSize*.75/math.max(1,width)))
+    end
+    return math.ceil(lines*fontSize*1.35)
 end
 function UI.clear(frame)
     for _, x in frame:GetChildren() do if not x:IsA("UICorner") and not x:IsA("UIStroke") and not x:IsA("UIScale") then x:Destroy() end end

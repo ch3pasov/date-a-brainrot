@@ -48,6 +48,8 @@ function Result.mount(parent, result, options)
     text("Rule", ("%s · %s\nНужно %d из %d. Ошибаться можно."):format(Locations.get(result.locationId).short, mode.name, mode.required, mode.total), y + line * 2 + 24, 3, C.muted)
     text("CollectionProgress", (owned and "✓ Сувенир в коллекции" or "Сувенир ждёт удачного раунда") .. ("\nСобрано %d / %d"):format(progress.collected, progress.total), y + line * 5 + 30, 2, C.ink, true)
     scroll.CanvasSize = UDim2.fromOffset(0, y + line * 7 + 44)
+    scroll.CanvasPosition = options.scrollPosition or Vector2.new(0, 0)
+    if options.scrolled then scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function() options.scrolled(scroll.CanvasPosition) end) end
     local back = UI.button(box, "BackToMatches", "Сувениры", UDim2.fromOffset(24, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.card, options.back)
     back.TextSize = UI.readableSize(17)
     local again = UI.button(box, "ResultContinue", "Ещё раз →", UDim2.fromOffset(w / 2 + 6, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.mint, options.continue)

@@ -8,10 +8,10 @@ local Harness = {}
 function Harness.new(width, height)
     local logical = Screen.resolve(width, height - 58, true)
     local function instance(class)
-        local fields = { ClassName = class, Name = class, children = {}, attributes = {} }
+        local fields = { ClassName = class, Name = class, children = {}, attributes = {}, signals = {} }
         local object
         fields.FindFirstChild = function(_, name) return fields.children[name] end
-        fields.GetPropertyChangedSignal = function() return {Connect = function() end} end
+        fields.GetPropertyChangedSignal = function(_, property) return {Connect = function(_,callback) fields.signals[property]=callback end} end
         fields.SetAttribute = function(_, name, value) fields.attributes[name] = value end
         fields.GetAttribute = function(_, name) return fields.attributes[name] end
         fields.Activated = {Connect = function(_, callback) fields.action = callback end}
@@ -27,7 +27,7 @@ function Harness.new(width, height)
     local enum = { TextXAlignment = {Center="center", Left="left"}, TextYAlignment = {Center="center"},
         ApplyStrokeMode = {Border="border"}, Font = {GothamBlack="bold", Gotham="regular"},
         AutomaticSize = {Y="y"}, SortOrder = {LayoutOrder="order"} }
-    local env = { Instance={new=instance}, Color3=roblox.Color3, UDim=roblox.UDim, UDim2=roblox.UDim2,
+    local env = { Instance={new=instance}, Color3=roblox.Color3, UDim=roblox.UDim, UDim2=roblox.UDim2, Vector2=roblox.Vector2,
         Enum=enum, Feedback={bind=function() end, play=function() end} }
     local source = fs.readFile("src/client/UI.luau")
     local first = assert(source:find("local UI = {}", 1, true))

@@ -634,9 +634,9 @@ local function completeGame(result)
     activeGame = nil; render()
     showResult(result, key, completedStage, completedLocation)
 end
-showResult = function(result, key, completedStage, completedLocation)
+showResult = function(result, key, completedStage, completedLocation, scrollPosition)
     closeModal()
-    modalRebuild = function() showResult(result, key, completedStage, completedLocation) end
+    modalRebuild = function() showResult(result, key, completedStage, completedLocation, scrollPosition) end
     local overlay = UI.overlay(canvas, "GameResultOverlay", .04); modal = overlay
     local stage = completedStage or result.stage or 1
     local match = getMatch(key)
@@ -644,7 +644,8 @@ showResult = function(result, key, completedStage, completedLocation)
     local photo
     for _, item in state.album do if item.key == key then photo = item; break end end
     local box = ResultCard.mount(overlay, result, {
-        mobile = mobile, availableHeight = height, stage = stage, character = character, photo = photo, locationId = completedLocation,
+        mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth, stage = stage, character = character, photo = photo, locationId = completedLocation,
+        scrollPosition = scrollPosition, scrolled = function(position) scrollPosition = position end,
         mount = function(art, options) modalViewer = mount(art, character.id, match.variantId, options) end,
         back = function() closeModal(); if result.remixId then nav("album"); showRemixes(key) elseif result.practice then nav("album"); showStory(key) else nav("matches") end end,
         continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album") else startGame(key) end end,
