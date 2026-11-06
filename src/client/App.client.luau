@@ -1102,7 +1102,9 @@ updateScale()
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or not profileReady or busy or modal or gameInputLocked or rotationRequired then return end
-    if activeGame and activeGame.stage == 2 and input.KeyCode == Enum.KeyCode.Space then submitGame(1)
+    if activeGame and activeGame.awaitingReady then
+        if activeGame.stage == 3 and input.KeyCode == Enum.KeyCode.Return then readyGame() end
+    elseif activeGame and activeGame.stage == 2 and input.KeyCode == Enum.KeyCode.Space then submitGame(1)
     elseif activeGame then
         local choice = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4 })[input.KeyCode]
         if choice and (activeGame.stage == 3 or choice <= 3) and not dateRevealing then submitGame(choice) end

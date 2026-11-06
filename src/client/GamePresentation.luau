@@ -278,7 +278,7 @@ function Presentation.mount(body, session, character, variant, options)
         if session.awaitingReady then
             controller.revealing = true; options.revealing(true)
             cue.Visible = false
-            controller.readyButton = Briefing.mount(root, session, { width=w, height=h, ready=options.ready })
+            controller.readyButton = Briefing.mount(root, session, { width=w, height=h, mobile=mobile, ready=options.ready })
         elseif session.step == 1 and session.sequence then
             revealState = DateReveal.mount(session.sequence, session.token, options.revealState)
             DateReveal.setPaused(revealState, options.revealPaused and options.revealPaused() or false)

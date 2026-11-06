@@ -13,9 +13,10 @@ local rect=Harness.rect
 test("Briefing keeps rules scrollable and start/back controls separated on six screen sizes",function()
     for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{1280,720}} do
         for _,mode in {"normal","long","reverse"} do
+          for _,place in Locations.list do
             local f=Harness.new(screen[1],screen[2]);local taps=0
             local briefing=f.module("src/client/DateBriefing.luau",{Remix=Remix,Locations=Locations})
-            local ready=briefing.mount(f.root,{remixId=mode,locationId="rooftop"},{width=f.logical.width,height=f.logical.height,ready=function()taps+=1 end})
+            local ready=briefing.mount(f.root,{remixId=mode,locationId=place.id},{width=f.logical.width,height=f.logical.height,mobile=f.logical.mobile,ready=function()taps+=1 end})
             local box=f.root.DateBriefing.ReadyCard
             local card=rect(box,f.logical.width,f.logical.height)
             assert(card.x>=0 and card.x+card.w<=f.logical.width and card.y+card.h<=f.logical.height)
@@ -23,10 +24,20 @@ test("Briefing keeps rules scrollable and start/back controls separated on six s
             local title,rules,button=rect(box.Title,card.w,card.h),rect(box.Rules,card.w,card.h),rect(ready,card.w,card.h)
             assert(title.y+title.h+8<=rules.y and rules.h>=100 and rules.y+rules.h+8<=button.y)
             assert(button.y+button.h<=card.h and button.h*f.logical.scale>=44)
+            assert(f.ui.textHeight(box.Title.Text,box.Title.TextSize,title.w,true)<=title.h)
+            assert(f.ui.textHeight("Подключаемся…",ready.TextSize,button.w-16,true)+20<=button.h)
+            assert((box.Rules.Hint.Text:find("Enter",1,true)~=nil)==not f.logical.mobile)
+            local previousBottom=0
+            for _,node in {box.Rules.Place,box.Rules.Rule,box.Rules.Target,box.Rules.Hint}do
+                local r=rect(node,rules.w,box.Rules.CanvasSize.Y.Offset)
+                assert(r.y>=previousBottom);previousBottom=r.y+r.h
+                assert(f.ui.textHeight(node.Text,node.TextSize,r.w,node.Font=="bold")<=r.h,node.Name.." clips its instructions")
+            end
             local hint=rect(box.Rules.Hint,rules.w,rules.h)
             assert(hint.y+hint.h<=box.Rules.CanvasSize.Y.Offset and box.Rules.ScrollingEnabled)
             assert(box.Rules.Target.Text:find(mode=="long" and "5 из 6" or "3 из 4",1,true))
             ready.action();assert(taps==1)
+          end
         end
     end
 end)
@@ -41,7 +52,7 @@ test("Presentation mounts a locked briefing without starting a reveal, while sta
     local controller={buttons={{},{},{},{}}};local cue={Visible=true};local revealing=false
     luau.load(source:sub(first,last-1).."\n"..source:sub(lockStart,lockEnd-1),{environment={
         session={awaitingReady=true,stage=3,locationId="park",token="t",step=1},controller=controller,
-        root=f.root,cue=cue,Briefing=briefing,w=f.logical.width,h=f.logical.height,
+        root=f.root,cue=cue,Briefing=briefing,w=f.logical.width,h=f.logical.height,mobile=f.logical.mobile,
         options={revealing=function(value)revealing=value end,ready=function()end},
     }})()
     assert(revealing and controller.revealing and not cue.Visible and controller.readyButton)

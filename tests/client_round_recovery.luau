@@ -8,6 +8,9 @@ local source = fs.readFile("src/client/App.client.luau")
 local first = assert(source:find("local function syncGameControls()",1,true))
 local last = assert(source:find("\nactions.gameInput = submitGame",first,true))
 local inputSource = source:sub(first,last-1)
+local keyFirst=assert(source:find("UserInputService.InputBegan:Connect(function(input, processed)",1,true))
+local keyLast=assert(source:find("\nchanged.OnClientEvent:Connect",keyFirst,true))
+local keyboardSource=source:sub(keyFirst,keyLast-1)
 local tests = {}
 local function test(name,fn)
     local ok,err = pcall(fn)
@@ -33,6 +36,9 @@ local function fixture(stage,practice)
     f.view = f.presentation()
     f.body = {Size={Y={Offset=500}}}
     local environment = {
+        UserInputService={InputBegan={Connect=function(_,callback)f.key=callback end}},
+        Enum={KeyCode={Return="Return",Space="Space",One="One",Two="Two",Three="Three",Four="Four",Right="Right",Left="Left"}},
+        swipe=function(value)f.swipe=value end,
         initial=f.initial,presentation=f.view,Games=Games,C={panel="panel",bad="bad"},
         body=f.body,UDim2={fromOffset=function(x,y)return {X={Offset=x},Y={Offset=y}}end},
         os={clock=function() return f.now end},
@@ -57,11 +63,13 @@ local function fixture(stage,practice)
     f.client = luau.load([[
         local activeGame,gamePresentation=initial,presentation
         local busy,gameInputLocked,dateRevealing=false,false,false
+        local profileReady,modal,rotationRequired=true,nil,false
         local inFlightGameInput=nil
         local activeTab="matches"
-    ]] .. inputSource .. [[
+    ]] .. inputSource .. "\n" .. keyboardSource .. [[
         return {
             call=submitGame,
+            inputState=function(readyValue,modalValue,rotationValue) profileReady=readyValue;modal=modalValue;rotationRequired=rotationValue end,
             ready=readyGame,
             setGame=function(value) activeGame=value end,
             setTab=function(value)activeTab=value end,
@@ -73,6 +81,44 @@ local function fixture(stage,practice)
     function f.start(choice) return coroutine.create(function() return f.client.call(choice or 1) end) end
     return f
 end
+
+test("Enter starts only a ready date, coalesces repeats and never submits a pre-start answer",function()
+    local f=fixture(3);f.initial.awaitingReady=true
+    for _,key in {"One","Two","Three","Four","Space","Right","Left"}do
+        f.key({KeyCode=key},false)
+    end
+    assert(#f.requests==0 and f.swipe==nil)
+    local ready=coroutine.create(function()f.key({KeyCode="Return"},false)end)
+    assert(resume(ready)=="rpc" and f.requests[1].action=="readyGame")
+    f.key({KeyCode="Return"},false);assert(#f.requests==1)
+    resume(ready,{token="round",stage=3,step=1,sequence={1,2,3,4}})
+    f.key({KeyCode="Return"},false);assert(#f.requests==1)
+    for _,stage in {1,2}do
+        local other=fixture(stage);other.key({KeyCode="Return"},false)
+        assert(#other.requests==0)
+    end
+end)
+test("Keyboard respects every blocking state and retains chat, call, date and feed controls",function()
+    for _,guard in {"processed","profile","busy","modal","locked","rotation"}do
+        for _,key in {"Return","One","Space"}do
+            local f=fixture(key=="Space" and 2 or 3);f.initial.awaitingReady=key=="Return"
+            f.client.flags(guard=="busy",guard=="locked",false)
+            f.client.inputState(guard~="profile",guard=="modal",guard=="rotation")
+            f.key({KeyCode=key},guard=="processed");assert(#f.requests==0,guard)
+        end
+    end
+    for _,sample in {{1,"Three",3},{2,"Space",1},{2,"Two",2},{3,"Four",4}}do
+        local f=fixture(sample[1]);local input=coroutine.create(function()f.key({KeyCode=sample[2]},false)end)
+        assert(resume(input)=="rpc" and f.requests[1].action=="gameInput" and f.requests[1].args.choice==sample[3])
+    end
+    local f=fixture(1);f.key({KeyCode="Four"},false);assert(#f.requests==0)
+    f.client.setGame({stage=3});f.client.flags(false,false,true)
+    f.key({KeyCode="Four"},false);assert(#f.requests==0)
+    f.client.setGame(nil);f.client.setTab("feed")
+    f.key({KeyCode="Right"},false);assert(f.swipe==true)
+    f.key({KeyCode="Left"},false);assert(f.swipe==false)
+    f.client.setTab("album");f.key({KeyCode="Right"},false);assert(f.swipe==false)
+end)
 
 test("Unavailable input states never send a request or a preview",function()
     for _,kind in {"missing","busy","locked","reveal"} do
