@@ -16,6 +16,7 @@ local FeedLayout = require(Shared.FeedLayout)
 local PresentationLayout = require(Shared.PresentationLayout)
 local Preferences = require(Shared.Preferences)
 local UI = require(script.Parent.UI)
+local StateCard=require(script.Parent.StateCard)
 local Viewer = require(script.Parent.ModelViewer)
 local Feedback = require(script.Parent.Feedback)
 local Inbox = require(script.Parent.MatchInbox)
@@ -52,6 +53,7 @@ local dateRevealing = false
 local scrollPositions = {}
 local renderedListKey = nil
 local renderedFeedKey,pendingFeedRestore
+local emptyReading={}
 local gamePresentation = nil
 local gamePresentationToken, dateRevealState = nil, nil
 local dateCollectionState = nil
@@ -363,9 +365,16 @@ local function buildShell()
     end
 end
 local function empty(parent, title, description, buttonText, callback)
-    UI.label(parent, "EmptyTitle", title, UDim2.fromOffset(35, 160), UDim2.new(1, -70, 0, 70), 31, C.text, true)
-    UI.label(parent, "EmptyDescription", description, UDim2.fromOffset(35, 245), UDim2.new(1, -70, 0, 110), 19, C.muted)
-    if buttonText then UI.button(parent, "EmptyAction", buttonText, UDim2.fromOffset(35, 375), UDim2.fromOffset(300, 56), C.purple, callback).TextColor3 = C.bg end
+    local contentWidth=mobile and math.max(436,(UI.availableWidth or 480)-44) or width-52
+    local contentHeight=mobile and FeedLayout.resolve(width,height,mobile,UI.touchMinimum).dockY-parent.Position.Y.Offset-18 or parent.Size.Y.Offset
+    parent.Position=UDim2.fromOffset((width-contentWidth)/2,parent.Position.Y.Offset)
+    parent.Size=UDim2.fromOffset(contentWidth,contentHeight)
+    if parent:IsA("ScrollingFrame")then
+        parent.ScrollingEnabled=false;parent.ScrollBarThickness=0;parent.CanvasSize=UDim2.fromOffset(0,0)
+    end
+    local key=title.."\n"..description
+    StateCard.mount(parent,{mobile=mobile,title=title,note=description,icon=profileReady and "photo" or "clock",
+        actionText=buttonText,action=callback,scrollPosition=emptyReading[key],scrolled=function(position)emptyReading[key]=position end})
 end
 renderLoadScreen = function()
     UI.clear(body)

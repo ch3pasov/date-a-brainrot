@@ -11,6 +11,8 @@ function Harness.new(width, height)
         local fields = { ClassName = class, Name = class, children = {}, attributes = {}, signals = {} }
         local object
         fields.FindFirstChild = function(_, name) return fields.children[name] end
+        fields.IsA=function(_,expected)return class==expected end
+        fields.GetChildren=function()local out={};for _,child in fields.children do table.insert(out,child)end;return out end
         fields.GetPropertyChangedSignal = function(_, property) return {Connect = function(_,callback) fields.signals[property]=callback end} end
         fields.SetAttribute = function(_, name, value) fields.attributes[name] = value end
         fields.GetAttribute = function(_, name) return fields.attributes[name] end

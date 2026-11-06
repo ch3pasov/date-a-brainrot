@@ -3,6 +3,7 @@
 local Harness=require("../../tests/support/ui_harness")
 local Call=require("../../tests/support/call_harness")
 local Feed=require("../../tests/support/feed_harness")
+local FeedLayout=require("../../src/shared/FeedLayout")
 local Logic=require("../../src/shared/GameLogic")
 local Catalog=require("../../src/shared/Catalog")
 local Collection=require("../../src/shared/Collection")
@@ -45,7 +46,19 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="feed"then
+    if kind=="loading" or kind=="retry" or kind=="feed_empty"then
+        local l=h.logical;local layout=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
+        local w=l.mobile and math.max(436,h.ui.availableWidth-44) or l.width-52
+        local bodyH=l.mobile and layout.dockY-layout.bodyY-18 or l.height-214
+        local parent=h.ui.frame(h.root,"StatusArea",h.environment.UDim2.new(.5,-w/2,0,layout.bodyY),h.environment.UDim2.fromOffset(w,bodyH))
+        parent.BackgroundTransparency=1
+        local values=({loading={"Знакомство начинается…","Загружаем персонажей и твою историю."},
+            retry={"История подождёт тебя","Не удалось загрузить историю. Попробуй ещё раз.","Попробовать снова"},
+            feed_empty={"Ты просмотрел всю коллекцию","Можно вернуться к вашим историям и открыть новые места для свиданий.","Открыть истории"}})[kind]
+        h.module("src/client/StateCard.luau",{Icons=icons},"local C=UI.colors").mount(parent,{mobile=l.mobile,
+            title=values[1],note=values[2],actionText=values[3],action=values[3] and noop or nil,icon=kind=="feed_empty" and "photo" or "clock"})
+        box=parent
+    elseif kind=="feed"then
         box=Feed.mount(h,character,Config.Variants[1],{sceneMount=options.mount,lastPass={}}).frame
     elseif kind=="call" or kind=="call_miss" then
         local call,_,top=Call.mount(h,character,{token="preview",stage=2,attempts=0,hits={},gesture=2},{sceneMount=options.mount})
@@ -107,7 +120,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end
