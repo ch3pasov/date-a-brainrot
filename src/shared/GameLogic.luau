@@ -6,6 +6,7 @@ local Locations
 local Preferences
 local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
 local PhotoStyle = if script then require(script.Parent.PhotoStyle) else require("./PhotoStyle")
+local Collection = if script then require(script.Parent.Collection) else require("./Collection")
 if script then
     Config = require(script.Parent.Config)
     Catalog = require(script.Parent.Catalog)
@@ -54,15 +55,8 @@ local function validVisitedLocations(visited)
     return count <= #Locations.list
 end
 local function visitedLocations(photo)
-    local visited = {}
-    for _, location in Locations.list do
-        if type(photo.visitedLocations) == "table" and photo.visitedLocations[location.id] == true then
-            visited[location.id] = true
-        end
-    end
-    -- A saved selfie from before passports is proof of one successful date.
-    if Locations.valid(photo.locationId) then visited[photo.locationId] = true end
-    return visited
+    -- A saved selfie or earned remix souvenir proves a successful visit.
+    return Collection.passport(photo).visited
 end
 function Logic.validSavedProfile(data)
     if data == nil then return true end

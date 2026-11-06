@@ -57,6 +57,7 @@ test("A failed replay still displays its earned souvenir and saved best without 
     assert(result.Title.Text == "ПОПРОБУЕМ ЕЩЁ?")
     assert(result.RemixResultContent.Score.Text:find("рекорд 100%%"))
     assert(result.RemixResultContent.CollectionProgress.Text:find("✓ Сувенир в коллекции",1,true))
+    assert(result.RemixResultContent.CollectionProgress.Text:find("Место отмечено в паспорте",1,true))
     for i = 1, 6 do assert(result.RemixResultContent["ResultAttempt_" .. i]) end
     result.BackToMatches.action(); result.ResultContinue.action()
     assert(back == 1 and again == 1)
@@ -78,6 +79,25 @@ test("Remix result remains scrollable and its fixed actions do not overlap on sh
         assert(review.y>=note.y+note.h+8 and review.y+review.h<=result.RemixResultContent.CanvasSize.Y.Offset)
         assert(result.Title.Text=="НОВЫЙ СУВЕНИР!")
     end
+end)
+test("Long remix captions, passport messages and titles grow without clipping or overlaps",function()
+    for _,screen in screens do for _,mode in Remix.list do for _,owned in {false,true}do
+        local f=fixture(screen[1],screen[2]);local options=f.options()
+        options.photo={remixScores={}};options.back=function()end;options.continue=function()end
+        local result=f.result.mount(f.root,{remixId=mode.id,locationId="rooftop",score=owned and 1 or 0,best=owned and 1 or 0,passed=owned,unlocked=false},options)
+        local w,h=result.Size.X.Offset,result.Size.Y.Offset
+        local title,scroll=rect(result.Title,w,h),rect(result.RemixResultContent,w,h)
+        assert(title.h>=f.ui.textHeight(result.Title.Text,result.Title.TextSize,title.w,true))
+        assert(title.y+title.h+8<=scroll.y and scroll.h>100)
+        local previous=142
+        local content=result.RemixResultContent
+        for _,name in {"SouvenirName","SouvenirCaption","ResultAttempt_1","Score","Rule","CollectionProgress"}do
+            local node=content[name];local r=rect(node,scroll.w,scroll.h)
+            assert(r.y>=previous+8 and r.y+r.h<=content.CanvasSize.Y.Offset,name.." overlaps another result block")
+            if node.Text then assert(r.h>=f.ui.textHeight(node.Text,node.TextSize,r.w,node.Font=="bold"),name.." clips text")end
+            previous=r.y+r.h
+        end
+    end end end
 end)
 test("Only earned souvenirs offer photo actions and the selected sticker can be removed",function()
     for _,screen in screens do

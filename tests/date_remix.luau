@@ -100,7 +100,7 @@ test("First success unlocks one souvenir; later wins and misses preserve best an
     assert(ok and not result.passed and result.best == 5/6 and p.revision == revision)
     assert(Remix.progress(p.album[key]).collected == 1 and encode(p.matches[key]) == beforeMatch)
     local photo = table.clone(p.album[key]); photo.remixScores = nil
-    assert(encode(photo) == beforePhoto, "A remix changed the ordinary scores, selfie or passport")
+    assert(encode(photo) == beforePhoto, "A remix rewrote the saved selfie or ordinary scores")
 end)
 test("All six souvenirs persist through a saved profile roundtrip and snapshots are isolated", function()
     local p, key = profile()

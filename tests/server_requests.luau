@@ -300,6 +300,7 @@ test("Real server long remix completes six inputs, saves one reward and recovers
     local snapshot = f.invoke(f.a,"snapshot")
     assert(not encoded(snapshot):find("dateReview",1,true))
     assert(snapshot.album[1].remixScores["rooftop:long"] == 1 and snapshot.album[1].locationId == "park")
+    assert(snapshot.album[1].visitedLocations.rooftop and snapshot.album[1].visitedLocations.park)
     assert(snapshot.album[1].scores["3"] == 1 and snapshot.matches[1].stage == 4)
     f.drain()
     assert(f.saves[#f.saves].data.album[key].remixScores["rooftop:long"] == 1)

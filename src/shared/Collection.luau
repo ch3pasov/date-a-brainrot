@@ -8,7 +8,13 @@ function Collection.passport(photo)
     local visited, count = {}, 0
     photo = photo or {}
     for _, location in Locations.list do
-        if photo.locationId == location.id or (type(photo.visitedLocations) == "table" and photo.visitedLocations[location.id] == true) then
+        local earnedHere = false
+        if type(photo.remixScores) == "table" then
+            for _, mode in Remix.list do
+                if Remix.passed(mode.id, photo.remixScores[Remix.key(location.id,mode.id)]) then earnedHere = true; break end
+            end
+        end
+        if earnedHere or photo.locationId == location.id or (type(photo.visitedLocations) == "table" and photo.visitedLocations[location.id] == true) then
             visited[location.id] = true; count += 1
         end
     end

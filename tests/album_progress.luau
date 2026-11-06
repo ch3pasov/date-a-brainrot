@@ -2,6 +2,8 @@ local Logic = require("../src/shared/GameLogic")
 local Catalog = require("../src/shared/Catalog")
 local Collection = require("../src/shared/Collection")
 local Remix = require("../src/shared/DateRemix")
+local PhotoStyle = require("../src/shared/PhotoStyle")
+local Ideas = require("../src/shared/JourneyIdeas")
 local serde = require("@lune/serde")
 local fs = require("@lune/fs")
 local tests = {}
@@ -122,6 +124,46 @@ test("A snapshot passport cannot mutate the profile and unknown places never cou
     assert(not Logic.recordSelfie(profile,key,"secret",123,"new",1300))
     assert(not Logic.recordSelfie(profile,key,"park",123,"new",0/0))
     assert(profile.album[key].locationId == "rooftop" and Collection.passport(profile.album[key]).count == 1)
+end)
+test("Successful remixes stamp new places and unlock travel without replacing the saved selfie",function()
+    local p=story();Logic.recordSelfie(p,key,"park",123,"saved-look",1100)
+    local original=serde.encode("json",p.album[key]);local revision=p.revision
+    assert(Logic.finishRemix(p,key,"cafe","long",5/6))
+    local snapshot=Logic.publicSnapshot(p,1200)
+    assert(Collection.passport(snapshot.album[1]).count==2 and snapshot.album[1].visitedLocations.cafe)
+    assert(Collection.nextPlace(snapshot.album[1])=="rooftop" and not PhotoStyle.unlocked(snapshot.album[1],"travel"))
+    assert(Logic.finishRemix(p,key,"rooftop","reverse",.75))
+    snapshot=Logic.publicSnapshot(p,1300)
+    assert(Collection.passport(snapshot.album[1]).complete and PhotoStyle.unlocked(snapshot.album[1],"travel"))
+    assert(Collection.stats(snapshot.album).completedPassports==1 and p.revision==revision+2)
+    for _,idea in Ideas.build(snapshot)do assert(idea.kind~="travel")end
+    local photo=table.clone(p.album[key]);photo.remixScores=nil
+    assert(serde.encode("json",photo)==original)
+    assert(Logic.stylePhoto(p,key,"heart","travel") and Logic.validSavedProfile(p))
+    local restored=roundtrip(p);local saved=restored.album[key]
+    assert(saved.locationId=="park" and saved.avatarSnapshot=="saved-look" and saved.selfieAt==1100)
+    assert(saved.photoFrame=="travel" and Collection.passport(saved).complete)
+end)
+test("Old earned souvenirs count retroactively while misses and unknown or invalid scores do not",function()
+    local p=story();p.album[key].locationId="park"
+    p.album[key].remixScores={["cafe:long"]=5/6,["rooftop:reverse"]=.75}
+    local revision=p.revision;local restored=roundtrip(p)
+    assert(Collection.passport(restored.album[key]).complete and restored.revision==revision)
+    local invalid={locationId="park",remixScores={["cafe:long"]=4/6,["rooftop:reverse"]=.5,["secret:long"]=1}}
+    assert(Collection.passport(invalid).count==1)
+    for _,score in {0/0,math.huge,"1",false,1.1}do
+        invalid.remixScores["cafe:long"]=score
+        assert(Collection.passport(invalid).count==1)
+    end
+end)
+test("Later misses and repeat wins keep visit stamps without extra revisions or shared snapshot tables",function()
+    local p=story();Logic.recordSelfie(p,key,"park",123,"saved",1100)
+    Logic.finishRemix(p,key,"cafe","reverse",.75);local revision=p.revision
+    Logic.finishRemix(p,key,"cafe","reverse",.25);Logic.finishRemix(p,key,"cafe","reverse",.75)
+    assert(p.revision==revision and Collection.passport(p.album[key]).count==2)
+    local snapshot=Logic.publicSnapshot(p,1300);snapshot.album[1].visitedLocations.cafe=nil
+    assert(Collection.passport(p.album[key]).visited.cafe)
+    assert(Logic.publicSnapshot(p,1400).album[1].visitedLocations.cafe)
 end)
 test("Perfect vibe rejects invalid scores instead of treating them as a trophy", function()
     for _, invalid in {0/0,math.huge,1.1,"1",false} do

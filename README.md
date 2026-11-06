@@ -50,7 +50,11 @@ Completed dates with mistakes now compare the planned items against your choices
 Reverse rounds show the reversed answer order explicitly; perfect rounds omit the
 review. It is result-only and does not change saved scores or rewards.
 
-370 offline checks and both source builds pass. New UI geometry and actions are
+Earned remix souvenirs now also prove a visit to their venue, including older
+saves. Travel frames unlock without repeating ordinary dates at the same places.
+Saved selfie identity stays intact, and remix-result text expands to fit.
+
+374 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 
