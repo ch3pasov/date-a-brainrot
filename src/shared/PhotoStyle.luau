@@ -25,6 +25,23 @@ function Style.unlocked(photo,id)
     if id=="souvenirs" then return Remix.progress(photo).collected==6 end
     return false
 end
+function Style.earned(photo)
+    local earned={}
+    if photo then
+        for _,frame in Style.frames do
+            if frame.id~="classic" and Style.unlocked(photo,frame.id) then earned[frame.id]=true end
+        end
+    end
+    return earned
+end
+function Style.newlyUnlocked(photo,previous)
+    local added={}
+    local earned=Style.earned(photo)
+    for _,frame in Style.frames do
+        if earned[frame.id] and not previous[frame.id] then table.insert(added,frame.id)end
+    end
+    return added
+end
 function Style.progress(photo,id)
     if Style.unlocked(photo,id) then return "Открыта ✓" end
     if id=="travel" then return ("Места %d/3"):format(Collection.passport(photo).count) end

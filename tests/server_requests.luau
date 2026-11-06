@@ -80,7 +80,7 @@ local function fixture()
         }
     ]], { environment = {
         initialProfiles = f.profiles, Logic = Logic, Config = Config, Catalog = Catalog,
-        Games = Games, Locations = Locations, Remix = Remix, Store = store, request = {},
+        Games = Games, Locations = Locations, Remix = Remix, PhotoStyle=PhotoStyle, Store = store, request = {},
         game = { PlaceVersion = 25 }, RunService = { IsStudio = function() return f.studio end },
         os = { clock = function() return f.clock end }, clock = function() return f.wall end,
         workspace = { GetServerTimeNow = function() return f.clock end },
@@ -460,6 +460,28 @@ test("Photo sticker RPC verifies ownership, saves promptly and makes retries ide
     assert(f.profiles[f.a].album[key].pinnedSouvenir==nil)
     f.drain();assert(f.saves[#f.saves].data.album[key].pinnedSouvenir==nil)
 end)
+test("Frame awards name only progress newly earned by the completed round",function()
+    local f=fixture();local key=f.match(f.a)
+    assert(not f.play(f.a,{key=key},2).newFrames)
+    assert(not f.play(f.a,{key=key}).newFrames)
+    assert(not f.play(f.a,{key=key,locationId="park"}).newFrames)
+    local improved=f.play(f.a,{key=key,practiceStage=1})
+    assert(#improved.newFrames==1 and improved.newFrames[1]=="perfect")
+    assert(not f.play(f.a,{key=key,practiceStage=1}).newFrames)
+    assert(not f.play(f.a,{key=key,practiceStage=3,locationId="cafe",remixId="long"}).newFrames)
+    local travel=f.play(f.a,{key=key,practiceStage=3,locationId="rooftop",remixId="reverse"})
+    assert(#travel.newFrames==1 and travel.newFrames[1]=="travel")
+    local awards=0
+    for _,place in Locations.list do for _,mode in Remix.list do
+        local result=f.play(f.a,{key=key,practiceStage=3,locationId=place.id,remixId=mode.id})
+        if result.newFrames then
+            assert(#result.newFrames==1 and result.newFrames[1]=="souvenirs");awards+=1
+        end
+    end end
+    assert(awards==1)
+    assert(not f.play(f.a,{key=key,practiceStage=3,locationId="rooftop",remixId="reverse"},true).newFrames)
+    assert(not encoded(f.profiles[f.a]):find("newFrames",1,true))
+end)
 test("A full story, every venue and souvenir, styled photo and JSON rejoin retain one coherent collection",function()
     local f=fixture();local key=f.match(f.a);local completed=0
     local function play(args,miss)completed+=1;return f.play(f.a,args,miss)end
@@ -504,15 +526,24 @@ test("Every character and variant can finish the whole collection and rejoin wit
         local response=f.invoke(f.a,"swipe",{characterId=character.id,variantId=variant.id,liked=true})
         assert(response.result=="matched" and not response.error)
         local key=Logic.key(character.id,variant.id)
+        local frameAwards={}
+        local function award(result)
+            for _,id in result.newFrames or {}do
+                assert(not frameAwards[id],"Each story earns each frame once");frameAwards[id]=true
+            end
+        end
         for stage=1,3 do
             local result=f.play(f.a,{key=key,locationId="park"})
             assert(result.passed and result.score==1 and result.stage==stage)
+            award(result)
         end
         for _,place in Locations.list do for _,mode in Remix.list do
             local result=f.play(f.a,{key=key,practiceStage=3,locationId=place.id,remixId=mode.id})
             assert(result.passed and result.unlocked and result.score==1)
             assert(result.recap.total==mode.total and result.recap.dateReview.locationId==place.id)
+            award(result)
         end end
+        assert(frameAwards.travel and frameAwards.perfect and frameAwards.souvenirs)
         count+=1
         local pose=PhotoStyle.poses[(count-1)%#PhotoStyle.poses+1].id
         local frame=PhotoStyle.frames[(count-1)%#PhotoStyle.frames+1].id

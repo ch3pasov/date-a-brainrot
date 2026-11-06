@@ -4,6 +4,7 @@ local Locations = require(Shared.Locations)
 local UI = require(script.Parent.UI)
 local Icons = require(script.Parent.ToyIcons)
 local DateReview = require(script.Parent.DateReview)
+local FrameReward = require(script.Parent.FrameReward)
 local C = UI.colors
 local Result = {}
 function Result.mount(parent, result, options)
@@ -29,7 +30,8 @@ function Result.mount(parent, result, options)
         BackgroundTransparency = 1, BorderSizePixel = 0, CanvasSize = UDim2.fromOffset(0, 0),
         ScrollBarThickness = 3, ScrollingEnabled = true,
     }, box)
-    local seal = UI.frame(scroll, "SouvenirSeal", UDim2.new(.5, -68, 0, 6), UDim2.fromOffset(136, 136), owned and C.yellow or C.card, 18)
+    local rewardH=result.newFrames and FrameReward.mount(scroll,result.newFrames,options.photo,w-64,0,options.editPhoto) or 0
+    local seal = UI.frame(scroll, "SouvenirSeal", UDim2.new(.5, -68, 0, rewardH+6), UDim2.fromOffset(136, 136), owned and C.yellow or C.card, 18)
     UI.stroke(seal, C.ink).Thickness = 2; seal.Rotation = -4
     Icons.souvenir(seal, souvenir.shape, UDim2.fromOffset(20, 20), UDim2.fromOffset(96, 96))
     local function text(name, value, y, lines, color, bold)
@@ -38,7 +40,7 @@ function Result.mount(parent, result, options)
         label.TextXAlignment = Enum.TextXAlignment.Center
         return height
     end
-    local y = 154
+    local y = rewardH+154
     y += text("SouvenirName", souvenir.name, y, 1, C.ink, true)+8
     y += text("SouvenirCaption", owned and souvenir.caption or mode.rule, y, 2, C.muted)+16
     local total = mode.total

@@ -9,6 +9,7 @@ local Catalog = require(Shared.Catalog)
 local Games = require(Shared.Minigames)
 local Locations = require(Shared.Locations)
 local Remix = require(Shared.DateRemix)
+local PhotoStyle = require(Shared.PhotoStyle)
 local AvatarData = require(Shared.AvatarData)
 local Store = require(script.Parent.ProfileStore)
 local net = Instance.new("Folder"); net.Name = "BrainrotNet"; net.Parent = ReplicatedStorage
@@ -163,21 +164,27 @@ end
 local function finish(player, session, score)
     games[player] = nil
     local recap = Games.recap(session)
+    local previousFrames=PhotoStyle.earned(profiles[player].album[session.key])
+    local function completed(extra)
+        local newFrames=PhotoStyle.newlyUnlocked(profiles[player].album[session.key],previousFrames)
+        if #newFrames>0 then extra.newFrames=newFrames end
+        return payload(player,extra)
+    end
     if session.remixId then
         local ok, result = Logic.finishRemix(profiles[player], session.key, session.locationId, session.remixId, score)
         if not ok then return { error = result } end
-        return payload(player, { result = "remix", practice = true, remixId = session.remixId, locationId = session.locationId,
+        return completed({ result = "remix", practice = true, remixId = session.remixId, locationId = session.locationId,
             score = score, best = result.best, improved = result.improved, passed = result.passed, unlocked = result.unlocked, stage = 3, recap = recap })
     end
     if session.practice then
         local ok, result = Logic.practiceStage(profiles[player], session.key, session.stage, score)
         if not ok then return { error = result } end
         if session.stage == 3 and result.passed then Logic.recordSelfie(profiles[player], session.key, session.locationId, player.UserId, avatarSnapshots[player], clock(player)) end
-        return payload(player, { result = "practice", practice = true, score = score, best = result.best, improved = result.improved, passed = result.passed, stage = session.stage, recap = recap })
+        return completed({ result = "practice", practice = true, score = score, best = result.best, improved = result.improved, passed = result.passed, stage = session.stage, recap = recap })
     end
     local passed, result = Logic.finishStage(profiles[player], session.key, session.stage, score, clock(player))
     if passed and session.stage == 3 then Logic.recordSelfie(profiles[player], session.key, session.locationId, player.UserId, avatarSnapshots[player], clock(player)) end
-    return payload(player, { result = result, score = score, passed = passed, stage = session.stage, recap = recap })
+    return completed({ result = result, score = score, passed = passed, stage = session.stage, recap = recap })
 end
 local function handle(player, action, args)
     if shuttingDown or closing[player] then return { error = "session_lost" } end

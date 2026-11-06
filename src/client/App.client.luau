@@ -731,6 +731,10 @@ showResult = function(result, key, completedStage, completedLocation, scrollPosi
         mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth, stage = stage, character = character, photo = photo, locationId = completedLocation,
         scrollPosition = scrollPosition, scrolled = function(position) scrollPosition = position end,
         mount = function(art, options) modalViewer = mount(art, character.id, match.variantId, options) end,
+        editPhoto = function(frameId)
+            if busy then return end
+            nav("album");showPhotoStudio(key,{frameId=frameId})
+        end,
         back = function() closeModal(); if result.remixId then nav("album"); showRemixes(key) elseif result.practice then nav("album"); showStory(key) else nav("matches") end end,
         continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album") else startGame(key) end end,
     })

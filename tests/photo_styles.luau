@@ -31,6 +31,15 @@ test("Frame unlocks belong to a story and include its older saved location",func
     end end
     assert(Style.unlocked(photo,"souvenirs") and Style.progress(photo,"souvenirs")=="Открыта ✓")
 end)
+test("Frame award snapshots support simultaneous unlocks without storing or repeating notifications",function()
+    local p,key,photo=fixture();local before=Style.earned(photo)
+    assert(next(before)==nil and next(Style.earned(nil))==nil)
+    photo.visitedLocations={cafe=true,rooftop=true}
+    for i=1,3 do assert(Logic.practiceStage(p,key,i,1))end
+    local added=Style.newlyUnlocked(photo,before)
+    assert(#added==2 and added[1]=="travel" and added[2]=="perfect" and next(before)==nil)
+    assert(#Style.newlyUnlocked(photo,Style.earned(photo))==0)
+end)
 test("A pose/frame edit is idempotent and leaves the actual selfie and records intact",function()
     local p,key,photo=fixture();local before=serde.encode("json",photo);local revision=p.revision
     assert(Logic.stylePhoto(p,key,"idle","classic") and p.revision==revision)

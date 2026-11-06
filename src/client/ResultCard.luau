@@ -7,6 +7,7 @@ local RemixResult = require(script.Parent.RemixResult)
 local Sticker = require(script.Parent.SouvenirSticker)
 local PhotoFrame = require(script.Parent.PhotoFrame)
 local DateReview = require(script.Parent.DateReview)
+local FrameReward = require(script.Parent.FrameReward)
 local UI = require(script.Parent.UI)
 local C = UI.colors
 local Result = {}
@@ -51,6 +52,7 @@ function Result.mount(parent, result, options)
     UI.label(seal,"Score",math.floor(result.score*100+.5).."%",UDim2.fromOffset(3,3),UDim2.new(1,-6,0,scoreH),scoreFont,C.ink,true).TextXAlignment=Enum.TextXAlignment.Center
     UI.label(seal,"Caption","ВАЙБ",UDim2.fromOffset(3,scoreH+5),UDim2.new(1,-6,0,captionH),stageFont,C.ink,true).TextXAlignment=Enum.TextXAlignment.Center
     local y=titleY+math.max(titleH,sealH)+20
+    if result.newFrames then y+=FrameReward.mount(content,result.newFrames,options.photo,usableW,y,options.editPhoto)end
     if selfie then
         local locationId=(options.photo and options.photo.locationId) or options.locationId or "park"
         local captionFont=UI.readableSize(17)

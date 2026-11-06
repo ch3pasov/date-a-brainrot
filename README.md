@@ -62,10 +62,14 @@ Date demonstrations also pause when the window loses focus or the Roblox menu
 opens. Returning replays the current cue in full, even if no frames ran while
 the game was hidden. Earlier cues and completed reveals are preserved.
 
-385 offline checks and both source builds pass. The full-catalog simulation covers
+390 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
+
+New photo frames appear as rewards in the round result, with a shortcut to try
+them in the booth. The server reports only frames unlocked by that round; preview
+does not save the style automatically. Every story is checked to award all three once.
 
 Notifications wait for the active window and a closed Roblox menu. Their reading
 time pauses while hidden, and a notice over the memory game pauses its current cue.
