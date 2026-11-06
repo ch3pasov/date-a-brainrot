@@ -36,6 +36,26 @@ function Layout.minimumPhoneHeight(mobile, touchMinimum, measuredReplyHeight)
     local replyHeight = math.max(mobile and 58 or 54, touchMinimum or 0, measuredReplyHeight or 0)
     return replyHeight * 3 + 24 + 139 + 120 + 16
 end
+function Layout.call(width,height,mobile,touchMinimum,metrics)
+    local headerH=math.max(metrics.badgeHeight,metrics.cueSize)+16
+    local controlsH=math.max(78,touchMinimum or 0,48+metrics.labelHeight+18)
+    local dotsH=metrics.dotSize
+    local dotsY=height-dotsH-8
+    local controlsY=dotsY-controlsH-10
+    local promptY=controlsY-metrics.promptHeight-10
+    local cameraY=headerH+8
+    local videoH=math.max(1,promptY-cameraY-10)
+    local stacked=mobile and (videoH-12)/2*metrics.scale>=70
+    return {
+        headerHeight=headerH,cameraY=cameraY,
+        cameraWidth=stacked and width-36 or (width-48)/2,
+        cameraHeight=stacked and (videoH-12)/2 or videoH,
+        secondCameraX=stacked and 18 or 18+(width-48)/2+12,
+        secondCameraY=stacked and cameraY+(videoH-12)/2+12 or cameraY,
+        stacked=stacked,promptY=promptY,promptHeight=metrics.promptHeight,
+        controlsY=controlsY,controlsHeight=controlsH,dotsY=dotsY,
+    }
+end
 function Layout.dateHeader(width, mobile, touchMinimum, fontSize)
     local control = math.max(66, touchMinimum or 0)
     local titleWidth = mobile and math.max(174, math.ceil(fontSize * 10)) or 550

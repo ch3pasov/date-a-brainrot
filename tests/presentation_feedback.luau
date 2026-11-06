@@ -139,7 +139,7 @@ test("Missing or malformed confirmation never fabricates a hit", function()
     assert(f.controller.state() == nil and f.slots.Round1.Mark.Text == "1")
 end)
 
-local function rebuildFixture(stage, locationId, mobile)
+local function rebuildFixture(stage, locationId, mobile, availableWidth)
     local before = fixture(stage, 2); before.controller.react(1, true)
     before.session.locationId = locationId
     before.controller.getReactionState = before.controller.state
@@ -153,8 +153,8 @@ local function rebuildFixture(stage, locationId, mobile)
         getMatch = function() return { characterId = "friend", variantId = "classic" } end,
         Logic = { character = function() return {} end, variant = function() return {} end },
         Games = { stageNames = { "chat", "call", "date" } },
-        UI = { button = function() return {} end, label = function() return {} end },
-        C = {}, UDim2 = { fromOffset = function() return {} end, new = function() return {} end },
+        UI = { availableWidth=availableWidth, button = function() return {} end, label = function() return {} end },
+        C = {}, UDim2 = require("@lune/roblox").UDim2,
         syncGameControls = function() end,
         Presentation = { mount = function(_, session, _, _, options)
             f.options = options
@@ -193,6 +193,15 @@ test("Actual App cleanup discards the acknowledgement after leaving a round", fu
     local f = rebuildFixture(3); f.app.leaveAndRestart()
     assert(f.before.disposed and f.options.reactionState == nil)
     assert(f.after.slots.Round2.Mark.Text == "2")
+end)
+test("Compact calls use the spare screen width while keeping the presentation centered",function()
+    for _,available in {480,696,812}do
+        local f=rebuildFixture(2,nil,true,available);f.app.rebuild()
+        local _,_,body=f.app.shell()
+        assert(f.options.width==available-44 and body.Size.X.Offset==f.options.width)
+        assert(body.Position.X.Offset==(480-f.options.width)/2)
+        assert(f.after.slots.Round2.Mark.Text=="♥")
+    end
 end)
 test("Every date venue uses the full play area and retains feedback and settings access", function()
     for _, locationId in {"park","cafe","rooftop"} do for _, mobile in {true,false} do

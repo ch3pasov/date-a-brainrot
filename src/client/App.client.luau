@@ -864,10 +864,12 @@ renderGame = function(updateOnly)
     local focused = immersive or session.stage <= 2
     local settingsSize = math.max(66, UI.touchMinimum or 0)
     local focusTop = math.max(94, settingsSize + 32)
+    local gameW=immersive and width or (mobile and 436 or width-52)
+    if mobile and session.stage==2 then gameW=math.max(gameW,(UI.availableWidth or 480)-44)end
     if focused then
         sidebar.Visible = false
-        body.Position = immersive and UDim2.fromOffset(0, 0) or UDim2.fromOffset(mobile and 22 or 26, focusTop)
-        body.Size = immersive and UDim2.fromOffset(width, height) or UDim2.fromOffset(mobile and 436 or width - 52, height - focusTop - 14)
+        body.Position = immersive and UDim2.fromOffset(0, 0) or UDim2.fromOffset((width-gameW)/2, focusTop)
+        body.Size = immersive and UDim2.fromOffset(width, height) or UDim2.fromOffset(gameW, height - focusTop - 14)
         body.BackgroundTransparency = 1
         if mobile then body.ScrollingEnabled = false; body.ScrollBarThickness = 0 end
         -- Keep settings and save warnings accessible without the app's chrome.
@@ -893,7 +895,6 @@ renderGame = function(updateOnly)
         back.TextSize = 30
         if not immersive then UI.label(header, "StageTitle", Games.stageNames[session.stage], UDim2.fromOffset(settingsSize + 14, 0), UDim2.new(1, -settingsSize * 2 - 28, 0, settingsSize - 26), mobile and 21 or 28, C.ink, true) end
     else UI.label(body, "StageTitle", Games.stageNames[session.stage], UDim2.fromOffset(mobile and 160 or 198, 0), UDim2.new(1, mobile and -160 or -198, 0, 54), mobile and 25 or 28, C.text, true) end
-    local gameW = immersive and width or (mobile and 436 or width - 52)
     local gameH = immersive and height or (focused and height - focusTop - 14 or (mobile and math.max(470, math.min(630, height - 281)) or height - 284))
     if session.stage == 1 then
         gameH = math.max(gameH, PresentationLayout.minimumPhoneHeight(mobile, UI.touchMinimum))
@@ -998,7 +999,7 @@ local function updateScale()
     UI.scale = layout.scale; UI.textBucket = textBucket; UI.availableWidth = availableWidth
     canvas.Size = UDim2.fromOffset(width, height)
     scale.Scale = layout.scale
-    if (layoutChanged or heightChanged or touchChanged or textChanged or (modal and modalWidthChanged)) and header then render(true) end
+    if (layoutChanged or heightChanged or touchChanged or textChanged or ((modal or (activeGame and activeGame.stage==2)) and modalWidthChanged)) and header then render(true) end
 end
 workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
 workspace.CurrentCamera.CFrame = CFrame.new(0, 10, 20)

@@ -34,13 +34,14 @@ function Presentation.mount(body, session, character, variant, options)
     end
     local status, replyArea, log, phone, npcScene, playerScene, dateScene, prompt, counter, gestureCue
     local chatPhoneW = mobile and w or 432
-    local function dots(parent, total, y)
-        local row = UI.frame(parent, "RoundDots", UDim2.new(.5, -total * 17, 0, y), UDim2.fromOffset(total * 34, 28), C.panel, 0); row.BackgroundTransparency = 1
+    local function dots(parent, total, y, size, font)
+        size=size or 28;local pitch=size+6
+        local row = UI.frame(parent, "RoundDots", UDim2.new(.5, -(total*pitch-6)/2, 0, y), UDim2.fromOffset(total*pitch-6, size), C.panel, 0); row.BackgroundTransparency = 1
         for i = 1, total do
-            local slot = UI.frame(row, "Round" .. i, UDim2.fromOffset((i - 1) * 34 + 14, 14), UDim2.fromOffset(28, 28), C.card, 14)
+            local slot = UI.frame(row, "Round" .. i, UDim2.fromOffset((i - 1) * pitch + size/2, size/2), UDim2.fromOffset(size, size), C.card, size/2)
             slot.AnchorPoint = Vector2.new(.5, .5)
             UI.stroke(slot, C.purple, 1)
-            centered(slot, "Mark", tostring(i), UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), 15, C.muted, true)
+            centered(slot, "Mark", tostring(i), UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), font or 15, C.muted, true)
         end
         return row
     end
@@ -148,33 +149,55 @@ function Presentation.mount(body, session, character, variant, options)
         controller.updateContent = rebuildChat
     elseif session.stage == 2 then
         root.BackgroundColor3 = C.ink
-        UI.pill(root, "Live", "НА СВЯЗИ", UDim2.fromOffset(16, 9), 160, C.pink).Label.TextSize = UI.readableSize(12, 10)
-        counter = centered(root, "CallCounter", "", UDim2.new(1, -140, 0, 8), UDim2.fromOffset(120, 28), UI.readableSize(14, 10), C.panel, true)
-        local videoH, videoW = layout.videoHeight, layout.cameraWidth
-        local yours = UI.frame(root, "PlayerVideo", UDim2.fromOffset(18, 47), UDim2.fromOffset(videoW, layout.cameraHeight), C.panel, 20)
+        local promptFont=UI.readableSize(mobile and 24 or 26)
+        local labelFont=UI.readableSize(mobile and 16 or 17,10)
+        local statusFont=UI.readableSize(12,10)
+        local dotFont=UI.readableSize(15,10)
+        local promptH,labelH=0,0
+        local function measurePrompt(text)promptH=math.max(promptH,UI.textHeight(text,promptFont,w-52,true)+8)end
+        for _,gesture in Locations.gestures do
+            measurePrompt(gesture.hint);measurePrompt("Ждали: "..gesture.label)
+            labelH=math.max(labelH,UI.textHeight(gesture.label,labelFont,w/3-24,true))
+        end
+        measurePrompt("Есть контакт! ♥");measurePrompt("Твой жест…")
+        for streak=2,6 do measurePrompt(Vibe.cheer(character.personality,streak))end
+        local badgeH=math.max(28,UI.textHeight("СВЯЗЬ",statusFont,140,true)+8)
+        local cueSize=math.max(40,math.ceil(24/(UI.scale or 1)))
+        local dotSize=math.max(28,math.ceil(dotFont*1.35)+4)
+        layout=PresentationLayout.call(w,h,mobile,UI.touchMinimum,{badgeHeight=badgeH,cueSize=cueSize,
+            dotSize=dotSize,promptHeight=promptH,labelHeight=labelH,scale=UI.scale or 1})
+        root:SetAttribute("StackedCameras",layout.stacked)
+        local live=UI.pill(root,"Live","СВЯЗЬ",UDim2.fromOffset(16,8),160,C.pink)
+        live.Size=UDim2.fromOffset(160,badgeH);live.Label.TextSize=statusFont
+        counter = centered(root, "CallCounter", "", UDim2.new(1, -140, 0, 8), UDim2.fromOffset(120, badgeH), UI.readableSize(14, 10), C.panel, true)
+        local videoW = layout.cameraWidth
+        local yours = UI.frame(root, "PlayerVideo", UDim2.fromOffset(18, layout.cameraY), UDim2.fromOffset(videoW, layout.cameraHeight), C.panel, 20)
         local theirs = UI.frame(root, "BrainrotVideo", UDim2.fromOffset(layout.secondCameraX, layout.secondCameraY), UDim2.fromOffset(videoW, layout.cameraHeight), C.panel, 20)
         UI.stroke(yours, C.yellow, 0).Thickness = 4; UI.stroke(theirs, C.yellow, 0).Thickness = 4
         playerScene = addScene(yours, nil, nil, { onlyPlayer = true, closePlayer = true, emotes = true, locationId = "park" })
         npcScene = addScene(theirs, character, variant, { portrait = true, keepPortraitWidth = true, emotes = true, portraitAim = character.cameraAim, locationId = Locations.forPersonality(character.personality) == "park" and "cafe" or Locations.forPersonality(character.personality) })
-        UI.pill(yours, "PlayerTag", "ТЫ · У ВОДЫ", UDim2.fromOffset(7, 8), math.min(videoW - 14, 160), C.yellow).Label.TextSize = UI.readableSize(12, 10)
-        UI.pill(theirs, "BrainrotTag", mobile and "БРЕЙНРОТ" or "СОБЕСЕДНИК", UDim2.fromOffset(7, 8), math.min(videoW - 14, mobile and 130 or 190), C.yellow).Label.TextSize = UI.readableSize(12, 10)
-        gestureCue = UI.frame(root, "GestureCue", UDim2.new(.5, -20, 0, 3), UDim2.fromOffset(40, 40), C.panel, 20)
-        local promptPlate = UI.frame(root, "CallPromptPlate", UDim2.fromOffset(22, videoH + 52), UDim2.new(1, -44, 0, 38), C.yellow, 4)
-        prompt = centered(promptPlate, "GesturePrompt", "", UDim2.fromOffset(4, 0), UDim2.new(1, -8, 1, 0), UI.readableSize(mobile and 24 or 26), C.ink, true)
+        for _,tag in {{yours,"PlayerTag","ТЫ"},{theirs,"BrainrotTag",mobile and "ДРУГ" or "СОБЕСЕДНИК"}}do
+            local tagW=math.min(videoW-14,mobile and 130 or 190)
+            local pill=UI.pill(tag[1],tag[2],tag[3],UDim2.fromOffset(7,8),tagW,C.yellow)
+            pill.Size=UDim2.fromOffset(tagW,math.max(28,UI.textHeight(tag[3],statusFont,tagW-16,true)+4));pill.Label.TextSize=statusFont
+        end
+        gestureCue = UI.frame(root, "GestureCue", UDim2.new(.5, -cueSize/2, 0, 8), UDim2.fromOffset(cueSize, cueSize), C.panel, cueSize/2)
+        local promptPlate = UI.frame(root, "CallPromptPlate", UDim2.fromOffset(22, layout.promptY), UDim2.new(1, -44, 0, layout.promptHeight), C.yellow, 4)
+        prompt = centered(promptPlate, "GesturePrompt", "", UDim2.fromOffset(4, 0), UDim2.new(1, -8, 1, 0), promptFont, C.ink, true)
         local controlsY = layout.controlsY
         for i, gesture in Locations.gestures do
             local button = UI.button(root, "Gesture_" .. i, "", UDim2.new((i - 1) / 3, 8, 0, controlsY), UDim2.new(1 / 3, -16, 0, layout.controlsHeight), C.panel, function() options.submit(i) end)
-            local iconY = (layout.controlsHeight - 74) / 2
+            local iconY = (layout.controlsHeight - 48-labelH-4) / 2
             Presentation.gestureIcon(button, gesture.id, UDim2.new(.5, -24, 0, iconY), UDim2.fromOffset(48, 48))
-            centered(button, "ActionName", gesture.label, UDim2.fromOffset(2, iconY + 46), UDim2.new(1, -4, 0, 26), UI.readableSize(mobile and 16 or 17, 10), C.text, true)
+            centered(button, "ActionName", gesture.label, UDim2.fromOffset(2, iconY + 52), UDim2.new(1, -4, 0, labelH), labelFont, C.text, true)
             UI.stroke(button, C.yellow, 0); table.insert(controller.buttons, button)
         end
-        roundDots = dots(root, 6, h - 32)
+        roundDots = dots(root,6,layout.dotsY,dotSize,dotFont)
         controller.updateContent = function(nextSession)
             local gesture = Locations.gestures[nextSession.gesture]
             prompt.Text = gesture.hint; counter.Text = tostring(nextSession.attempts + 1) .. " / 6"
             if gestureCue:FindFirstChild("GestureIcon") then gestureCue.GestureIcon:Destroy() end
-            Presentation.gestureIcon(gestureCue, gesture.id, UDim2.fromOffset(4, 4), UDim2.fromOffset(32, 32))
+            Presentation.gestureIcon(gestureCue, gesture.id, UDim2.fromOffset(4, 4), UDim2.fromOffset(cueSize-8,cueSize-8))
             npcScene.prompt(gesture.id)
             for i, button in controller.buttons do button.BackgroundColor3 = C.panel; button:SetAttribute("GestureId", Locations.gestures[i].id) end
             updateDots()
@@ -339,7 +362,8 @@ function Presentation.mount(body, session, character, variant, options)
                 if not alreadyPerformed then playerScene.act("player", gesture.id, .8) end
                 npcScene.act("npc", good and gesture.id or "wave", .8)
             end
-            prompt.Text = cheer or (good and "Есть контакт! ♥" or "Ой! Попробуем следующий жест")
+            local expected=Locations.gestures[controller.session.gesture]
+            prompt.Text = cheer or (good and "Есть контакт! ♥" or (expected and "Ждали: "..expected.label or "Другой жест. Дальше!"))
             local button = controller.buttons[choice]
             if button then
                 button.BackgroundColor3 = good and Color3.fromRGB(196, 232, 213) or Color3.fromRGB(252, 219, 226)

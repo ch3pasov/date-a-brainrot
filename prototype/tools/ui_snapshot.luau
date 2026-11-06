@@ -1,6 +1,7 @@
 -- Offline geometry/content export of production UI, not a Roblox screenshot.
 -- Run from repository root: lune run prototype/tools/ui_snapshot.luau /tmp/ui.json
 local Harness=require("../../tests/support/ui_harness")
+local Call=require("../../tests/support/call_harness")
 local Logic=require("../../src/shared/GameLogic")
 local Catalog=require("../../src/shared/Catalog")
 local Collection=require("../../src/shared/Collection")
@@ -18,6 +19,7 @@ local function color(value)
 end
 local function snapshot(kind,width,height,scrolled)
     local h=Harness.new(width,height)
+    h.ui.availableWidth=width/h.logical.scale
     local order=0;local create=h.environment.Instance.new
     h.environment.Instance.new=function(class)
         local node=create(class);order+=1;node:SetAttribute("PreviewOrder",order);return node
@@ -42,7 +44,11 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="match_letter" or kind=="return_letter" then
+    if kind=="call" or kind=="call_miss" then
+        local call,_,top=Call.mount(h,character,{token="preview",stage=2,attempts=0,hits={},gesture=2},{sceneMount=options.mount})
+        box=call.root;box.Position=h.environment.UDim2.new(.5,-box.Size.X.Offset/2,0,top)
+        if kind=="call_miss"then call.react(3,false)end
+    elseif kind=="match_letter" or kind=="return_letter" then
         options.returning=kind=="return_letter";options.count=136
         box=h.module("src/client/MatchLetter.luau",{Icons=icons}).mount(h.root,character,Config.Variants[4],options).frame
     elseif kind=="ideas" then
@@ -98,7 +104,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end
