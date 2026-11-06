@@ -9,7 +9,7 @@ local Config = require("../src/shared/Config")
 local clientSource = fs.readFile("src/client/App.client.luau")
 local notifyFirst = assert(clientSource:find("local pendingMatchNews, notificationScheduled", 1, true))
 local notifyLast = assert(clientSource:find("\nlocal errors = {", notifyFirst, true))
-local showFirst = assert(clientSource:find("showReturn = function(news)", 1, true))
+local showFirst = assert(clientSource:find("showReturn = function(", 1, true))
 local showLast = assert(clientSource:find("\nlocal function completeGame", showFirst, true))
 local tests = {}
 local function test(name, fn)
@@ -30,7 +30,7 @@ local function fixture()
         getMatch = function(key) return f.matches[key] end,
         UI = { overlay = function() return {} end },
         MatchLetter = { mount = function(_, character, variant, options)
-            table.insert(f.letters, { character = character.id, variant = variant.id, count = options.count })
+            table.insert(f.letters, { character = character.id, variant = variant.id, count = options.count,scrolled=options.scrolled,scrollPosition=options.scrollPosition })
             return { frame = {} }
         end },
         Feedback = { play = function() f.sounds += 1 end, pop = function() f.pops += 1 end, burst = function() f.bursts += 1 end },
@@ -73,8 +73,10 @@ test("Repeated snapshots show one letter while a resize rebuilds it without cele
     f.client.show({ "first", "second", "first" })
     f.client.show({ "first", "second" })
     assert(#f.letters == 1 and f.letters[1].count == 2 and f.sounds == 1)
+    local position={Y=180};f.letters[1].scrolled(position)
     f.client.rebuild()
     assert(#f.letters == 2 and f.letters[2].count == 2 and f.sounds == 1 and f.pops == 1 and f.bursts == 1)
+    assert(f.letters[2].scrollPosition==position)
     f.client.dismiss(); f.client.show({ "first", "second" }); assert(#f.letters == 2)
 end)
 test("Missing matches are not claimed and can appear when their snapshot arrives", function()

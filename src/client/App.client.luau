@@ -673,21 +673,22 @@ showRemixes = function(key, scrollPosition)
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .94) end
 end
-showMatch = function(key)
+showMatch = function(key,scrollPosition)
     local m = getMatch(key); if not m then return end
     local c, v = Logic.character(m.characterId), Logic.variant(m.variantId)
     closeModal()
-    modalRebuild = function() showMatch(key) end
+    modalRebuild = function() showMatch(key,scrollPosition) end
     modal = UI.overlay(canvas, "MatchOverlay", .08)
     modalViewer = MatchLetter.mount(modal, c, v, {
-        mobile = mobile, availableHeight = height,
+        mobile = mobile, availableHeight = height, availableWidth=UI.availableWidth,
+        scrollPosition=scrollPosition,scrolled=function(value)scrollPosition=value end,
         mount = function(art, options) return mount(art, c.id, v.id, options) end,
         back = closeModal,
         accept = function() closeModal(); startGame(key) end,
     })
     if not restoringModal then Feedback.play("success"); Feedback.pop(modalViewer.frame, .88); Feedback.burst(modal, width / 2, height / 2 - 80, C.mint, 18) end
 end
-showReturn = function(news)
+showReturn = function(news,scrollPosition)
     if not news or #news == 0 then return end
     local fresh, included = {}, {}
     for _, key in news do
@@ -701,10 +702,11 @@ showReturn = function(news)
     local character, variant = Logic.character(match.characterId), Logic.variant(match.variantId)
     for _, key in news do seenMatchNews[key] = true end
     closeModal()
-    modalRebuild = function() showReturn(news) end
+    modalRebuild = function() showReturn(news,scrollPosition) end
     modal = UI.overlay(canvas, "ReturnOverlay", .06)
     modalViewer = MatchLetter.mount(modal, character, variant, {
-        mobile = mobile, availableHeight = height, returning = true, count = #news,
+        mobile = mobile, availableHeight = height, availableWidth=UI.availableWidth, returning = true, count = #news,
+        scrollPosition=scrollPosition,scrolled=function(value)scrollPosition=value end,
         mount = function(art, options) return mount(art, character.id, variant.id, options) end,
         back = closeModal,
         accept = function() inboxFilter = "matches"; closeModal(); nav("matches") end,

@@ -29,6 +29,9 @@ local function snapshot(kind,width,height,scrolled)
     local reward=h.module("src/client/FrameReward.luau",{Style=Style})
     local album=h.module("src/client/Album.luau",{Collection=Collection,Locations=Locations})
     local character=Catalog[1]
+    if kind=="match_letter" or kind=="return_letter" then
+        for _,candidate in Catalog do if #candidate.name>#character.name then character=candidate end end
+    end
     local photo={key=character.id..":classic",characterId=character.id,variantId="classic",locationId="park",scores={},remixScores={}}
     if kind=="frame_reward" then photo.scores={['1']=1,['2']=1,['3']=1}end
     local options=h.options()
@@ -36,10 +39,13 @@ local function snapshot(kind,width,height,scrolled)
     options.back=noop;options.continue=noop;options.choose=noop;options.play=noop;options.pin=noop;options.save=noop;options.editPhoto=noop
     options.mount=function(parent)
         h.ui.label(parent,"ScenePlaceholder","3D",h.environment.UDim2.fromScale(0,0),h.environment.UDim2.fromScale(1,1),24,h.ui.colors.muted,true).TextXAlignment="center"
-        return {dispose=noop,setPhotoPose=noop}
+        return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="ideas" then
+    if kind=="match_letter" or kind=="return_letter" then
+        options.returning=kind=="return_letter";options.count=136
+        box=h.module("src/client/MatchLetter.luau",{Icons=icons}).mount(h.root,character,Config.Variants[4],options).frame
+    elseif kind=="ideas" then
         box=h.module("src/client/JourneyBoard.luau",{Logic=Logic,Locations=Locations,Icons=icons}).mount(h.root,Ideas.build({album={photo},matches={}}),options).frame
     elseif kind=="booth" then
         box=h.module("src/client/PhotoBooth.luau",{Style=Style,Icons=icons,Decor=decor,Sticker=sticker}).mount(h.root,photo,options).frame
@@ -91,7 +97,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end
