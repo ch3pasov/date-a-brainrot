@@ -30,7 +30,7 @@ photo spacing adapt to the window and preserve the reading position.
 
 The photo booth previews four static poses and three frames earned through story
 progress: all venues, three perfect stages, or all six souvenirs. Changes save only
-when requested and preserve the avatar, photo location, records, and sticker.
+when requested and preserve the avatar, photo location, records, and sticker. The preview stays visible while poses and frames scroll, so each choice can be seen immediately.
 
 The album Ideas board suggests up to three next activities from existing progress,
 with direct routes to unfinished stories, new venues, missing souvenirs, perfect

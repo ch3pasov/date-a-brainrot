@@ -18,27 +18,30 @@ function Booth.mount(parent, photo, options)
     local box=UI.frame(parent,"PhotoBoothDialog",UDim2.new(.5,-w/2,.5,-h/2),UDim2.fromOffset(w,h),C.panel,5)
     box.ZIndex=2
     UI.label(box,"Title","ФОТОБУДКА",UDim2.fromOffset(24,14),UDim2.new(1,-48,0,titleH),UI.readableSize(28),C.ink,true)
-    local scroll=UI.new("ScrollingFrame",{Name="BoothContent",Position=UDim2.fromOffset(24,bodyTop),Size=UDim2.fromOffset(w-48,footerY-bodyTop-14),
-        BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,CanvasSize=UDim2.fromOffset(0,0),ScrollingEnabled=true},box)
     local selected=options.selection or {}
     local poseId=selected.poseId or photo.photoPose or "idle"
     local frameId=selected.frameId or photo.photoFrame or "classic"
     local saving=false
     local innerW=w-56
     local previewW=options.mobile and innerW or 430
-    local previewH=options.mobile and 265 or 350
-    local art=UI.frame(scroll,"Preview",UDim2.fromOffset(0,4),UDim2.fromOffset(previewW,previewH),C.aqua,4)
+    local availableH=footerY-bodyTop-14
+    local previewH=options.mobile and math.clamp(math.floor(availableH*.36),120,210) or math.min(350,availableH-80)
+    local art=UI.frame(box,"Preview",UDim2.fromOffset(24,bodyTop),UDim2.fromOffset(previewW,previewH),C.aqua,4)
     UI.stroke(art,C.ink).Thickness=2
     local viewer=options.mount(art,{modal=true,scene=true,photo=true,pair=true,locationId=photo.locationId or "park",
         userId=photo.avatarUserId,avatarSnapshot=photo.avatarSnapshot,photoPose=poseId})
     Sticker.mount(art,photo)
     local frame=Decor.mount(art,{photoFrame=frameId})
-    local controlsX=options.mobile and 0 or previewW+24
-    local controlsW=innerW-controlsX
-    local y=options.mobile and previewH+22 or 4
-    local noteH=UI.textHeight("Выбери позу и рамку. Сохраним только по кнопке.",font,previewW,false)
-    UI.label(scroll,"PreviewHint","Выбери позу и рамку. Сохраним только по кнопке.",UDim2.fromOffset(0,previewH+16),UDim2.fromOffset(previewW,noteH),font,C.muted)
-    if options.mobile then y=previewH+noteH+30 end
+    local controlsLeft=options.mobile and 0 or previewW+24
+    local controlsW=innerW-controlsLeft
+    local controlsTop=options.mobile and bodyTop+previewH+14 or bodyTop
+    local scroll=UI.new("ScrollingFrame",{Name="BoothContent",Position=UDim2.fromOffset(24+controlsLeft,controlsTop),Size=UDim2.fromOffset(controlsW+8,footerY-controlsTop-14),
+        BackgroundTransparency=1,BorderSizePixel=0,CanvasSize=UDim2.fromOffset(0,0),ScrollBarThickness=3,ScrollingEnabled=true},box)
+    local controlsX,y=0,4
+    if not options.mobile then
+        local hint="Выбери позу и рамку. Сохраним только по кнопке."
+        UI.label(box,"PreviewHint",hint,UDim2.fromOffset(24,bodyTop+previewH+12),UDim2.fromOffset(previewW,UI.textHeight(hint,font,previewW,false)),font,C.muted)
+    end
     local headingH=math.ceil(font*1.4)
     UI.label(scroll,"PoseTitle","ПОЗА",UDim2.fromOffset(controlsX,y),UDim2.fromOffset(controlsW,headingH),font,C.ink,true)
     y+=headingH+8
@@ -92,7 +95,7 @@ function Booth.mount(parent, photo, options)
         UI.label(button,"Progress",hint,UDim2.fromOffset(12,nameH+12),UDim2.new(1,-24,0,hintH),hintFont,unlocked and C.mint or C.muted)
         frameButtons[style.id]=button;y+=cardH+10
     end
-    scroll.CanvasSize=UDim2.fromOffset(0,math.max(y+8,previewH+noteH+24))
+    scroll.CanvasSize=UDim2.fromOffset(0,y+8)
     scroll.CanvasPosition=selected.scrollPosition or Vector2.new(0,0)
     scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(changed)
     local back=UI.button(box,"CancelPhoto","Отмена",UDim2.fromOffset(24,footerY),UDim2.fromOffset((w-60)/2,actionH),C.card,function()if not saving then options.back() end end)

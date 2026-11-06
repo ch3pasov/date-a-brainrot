@@ -38,8 +38,13 @@ test("Photo booth offers all poses and frame goals in scrollable content with fi
         local w,h=box.Size.X.Offset,box.Size.Y.Offset
         assert(w*f.logical.scale<=screen[1] and h<=f.logical.height)
         local content=box.BoothContent;local r=Harness.rect(content,w,h)
+        local preview=Harness.rect(box.Preview,w,h)
         local save,back=Harness.rect(box.SavePhoto,w,h),Harness.rect(box.CancelPhoto,w,h)
         assert(r.h>100 and r.y+r.h+12<=save.y and back.x+back.w+8<=save.x)
+        assert(preview.x>=0 and preview.x+preview.w<=w and preview.y+preview.h<save.y)
+        if f.logical.mobile then assert(preview.y+preview.h+12<=r.y)
+        else assert(preview.x+preview.w+12<=r.x)end
+        assert(box.Preview.Parent==box and not content.Preview,"The preview must remain outside the scrolling controls")
         assert(save.h*f.logical.scale>=44 and back.h*f.logical.scale>=44)
         for _,name in {"Pose_idle","Pose_wave","Pose_heart","Pose_dance","Frame_classic","Frame_travel","Frame_perfect","Frame_souvenirs"} do
             local button=content[name];local b=Harness.rect(button,r.w,r.h)
@@ -58,8 +63,8 @@ test("Choosing a pose or earned frame changes only the preview until save and pr
     for _,id in {"heart","dance","idle","wave"} do content["Pose_"..id].action();assert(content["Pose_"..id]:GetAttribute("Selected")) end
     for _,id in {"perfect","travel","souvenirs","classic"} do
         content["Frame_"..id].action();assert(content["Frame_"..id]:GetAttribute("Selected"))
-        assert(content.Preview.PinnedSouvenir:GetAttribute("SouvenirId")=="cafe:long")
-        if id=="classic" then assert(content.Preview.PhotoFrame==nil) else assert(content.Preview.PhotoFrame:GetAttribute("FrameId")==id) end
+        assert(box.Preview.PinnedSouvenir:GetAttribute("SouvenirId")=="cafe:long")
+        if id=="classic" then assert(box.Preview.PhotoFrame==nil) else assert(box.Preview.PhotoFrame:GetAttribute("FrameId")==id) end
     end
     assert(#f.saves==0 and f.photo.photoPose=="heart" and f.photo.photoFrame==nil and #f.poses==4)
     content.Frame_perfect.action();box.SavePhoto.action()
