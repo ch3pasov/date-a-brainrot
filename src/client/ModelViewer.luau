@@ -24,9 +24,12 @@ function Viewer.mount(parent, character, variant, options)
     local distance = options.small and 13 or 12
     local aim = character.cameraAim or 0.35
     local perspective, targetPerspective = 0, 0
+    local cameraPerspective
     local function updateCamera()
+        if cameraPerspective == perspective then return end
         local angle = 0.4 + perspective
         camera.CFrame = CFrame.lookAt(Vector3.new(math.sin(angle) * distance, size.Y * aim + 0.3, math.cos(angle) * distance), Vector3.new(0, size.Y * aim, 0))
+        cameraPerspective = perspective
     end
     updateCamera()
     camera.Parent = viewport; viewport.CurrentCamera = camera
@@ -65,7 +68,7 @@ function Viewer.mount(parent, character, variant, options)
             end
         end
     end
-    if tracks.idle then tracks.idle:Play(0.15) end
+    if tracks.idle then tracks.idle:Play(0.15, 1, Feedback.motionEnabled and 1 or 0) end
     local alive = true
     local greetSerial = 0
     if not fallback and not loaded[character.id] then
@@ -80,6 +83,8 @@ function Viewer.mount(parent, character, variant, options)
         end)
     end
     local lastCheck, visible = 0, true
+    local playbackSpeed = Feedback.motionEnabled and 1 or 0
+    local lastPosePhase
     local function onScreen()
         local position, dimensions = viewport.AbsolutePosition, viewport.AbsoluteSize
         if dimensions.X <= 0 or dimensions.Y <= 0 then return false end
@@ -101,19 +106,27 @@ function Viewer.mount(parent, character, variant, options)
         local t = os.clock()
         if t - lastCheck > 0.15 then
             local nowVisible = onScreen()
-            if nowVisible ~= visible then
-                visible = nowVisible
-                for _, track in tracks do track:AdjustSpeed(visible and 1 or 0) end
-            end
+            visible = nowVisible
             lastCheck = t
+        end
+        local speed = visible and Feedback.motionEnabled and 1 or 0
+        if speed ~= playbackSpeed then
+            playbackSpeed = speed
+            for _, track in tracks do track:AdjustSpeed(speed) end
         end
         if not visible then return end
         local desired = Feedback.motionEnabled and targetPerspective or 0
-        perspective += (desired - perspective) * math.min(dt * 14, 1)
+        if Feedback.motionEnabled then
+            perspective += (desired - perspective) * math.min(dt * 14, 1)
+            if math.abs(desired - perspective) < .0001 then perspective = desired end
+        else perspective = 0 end
         updateCamera()
-        if not tracks.idle then model:PivotTo(base * CFrame.Angles(0, math.sin(t * 0.8) * 0.05, 0)) end
+        local phase = Feedback.motionEnabled and t or 0
+        if phase == lastPosePhase then return end
+        lastPosePhase = phase
+        if not tracks.idle then model:PivotTo(base * CFrame.Angles(0, math.sin(phase * 0.8) * 0.05, 0)) end
         for i, star in orbit do
-            local angle = t * 0.35 + i * math.pi / 3
+            local angle = phase * 0.35 + i * math.pi / 3
             star.Position = Vector3.new(math.cos(angle) * 3, size.Y * 0.45 + math.sin(angle * 1.6) * 1.2, math.sin(angle) * 2)
         end
     end)
@@ -131,9 +144,9 @@ function Viewer.mount(parent, character, variant, options)
             if not alive or not tracks.greeting then return end
             greetSerial += 1; local serial = greetSerial
             if tracks.idle then tracks.idle:Stop(0.12) end
-            tracks.greeting:Play(0.12, 1, visible and 1 or 0)
+            tracks.greeting:Play(0.12, 1, visible and Feedback.motionEnabled and 1 or 0)
             tracks.greeting.TimePosition = 0
-            task.delay(2.1, function() if alive and serial == greetSerial and tracks.idle then tracks.idle:Play(0.15, 1, visible and 1 or 0) end end)
+            task.delay(2.1, function() if alive and serial == greetSerial and tracks.idle then tracks.idle:Play(0.15, 1, visible and Feedback.motionEnabled and 1 or 0) end end)
         end,
     }
 end

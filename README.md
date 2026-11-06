@@ -43,7 +43,10 @@ Missing character models now use original procedural toy stand-ins with six
 personality accessories, variant colors, and date/photo gestures. Supplied models
 remain preferred. The fallback needs no meshes, textures, or animation assets.
 
-361 offline checks and both source builds pass. New UI geometry and actions are
+Quiet feedback now also stops portrait rotation, decorative orbits, and animation
+tracks. Hidden portraits pause tracks; resuming live feedback restores movement.
+
+365 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 
