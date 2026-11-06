@@ -48,7 +48,26 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="album_empty" or kind=="waiting" then
+    if kind=="album" then
+        local l=h.logical;local shell=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
+        local w=l.mobile and 436 or l.width-52
+        local bh=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
+        local parent=h.ui.frame(h.root,"AlbumArea",h.environment.UDim2.new(.5,-w/2,0,shell.bodyY),h.environment.UDim2.fromOffset(w,bh))
+        parent.BackgroundTransparency=1
+        local characters=table.clone(Catalog);table.sort(characters,function(a,b)return #a.name>#b.name end)
+        local state={album={}}
+        for _,c in characters do for index,v in Config.Variants do
+            local entry={key=Logic.key(c.id,v.id),characterId=c.id,variantId=v.id,locationId="park",scores={},remixScores={}}
+            if index==2 then entry.scores={['1']=1,['2']=1,['3']=1}end
+            if index==4 then
+                for _,place in Locations.list do for _,mode in Remix.list do entry.remixScores[Remix.key(place.id,mode.id)]=1 end end
+                entry.photoFrame="souvenirs";entry.pinnedSouvenir="cafe:long"
+            end
+            table.insert(state.album,entry)
+        end end
+        h.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Sticker=sticker,PhotoFrame=decor}).render(parent,state,l.mobile,1,{mount=options.mount,open=noop,page=noop,ideas=noop})
+        box=parent
+    elseif kind=="album_empty" or kind=="waiting" then
         local l=h.logical;local shell=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
         local w=l.mobile and 436 or l.width-52
         local bh=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
@@ -175,7 +194,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"album_empty","waiting","guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"album","album_empty","waiting","guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end

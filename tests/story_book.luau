@@ -52,10 +52,8 @@ local function fixture(width, height, character)
         section(uiSource, "function UI.readableSize(", "\nfunction UI.clear("), { environment = {
         UI = ui, UDim2 = roblox.UDim2, Enum = enum, Feedback = { bind = function() end },
     } })()
-    local album = {}
-    luau.load(section(albumSource, "function Album.passport(", "\nfunction Album.render("), { environment = {
-        Album = album, Collection = Collection, Locations = Locations, UI = ui, C = colors, UDim2 = roblox.UDim2, Enum = enum,
-    } })()
+    local albumFirst=assert(albumSource:find("local C = UI.colors",1,true))
+    local album=luau.load(albumSource:sub(albumFirst),{environment={Collection=Collection,Locations=Locations,UI=ui,UDim2=roblox.UDim2,Enum=enum}})()
     local icons = {}
     for _, name in { "phone", "video", "photo" } do
         icons[name] = function(parent, position, size) return ui.frame(parent, "Icon_" .. name, position, size) end
@@ -65,6 +63,7 @@ local function fixture(width, height, character)
         UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons, Sticker = {mount=function() end}, PhotoFrame = {mount=function()end},
         Color3 = roblox.Color3, UDim2 = roblox.UDim2, Enum = enum,
     } })()
+    f.ui=ui
     f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true }, photoPose = "heart",
         scores = { ["1"] = 1, ["2"] = 1, ["3"] = 1 }, visitedLocations = { cafe = true } }
     f.controller = book.mount(node("Frame", { Name = "Overlay" }), character or { name = "Glorbo Fruttodrillo", personality = "nature" },
@@ -91,16 +90,22 @@ test("Tiny story uses the available width rather than a narrow strip", function(
     end
 end)
 test("Actual story text, passport and 44px actions stay separate at all checked sizes", function()
-    for _, screen in { {280,320}, {320,370}, {320,480}, {390,650}, {1280,720} } do
+    for _, screen in { {240,320}, {240,650}, {280,320}, {320,370}, {320,480}, {390,650}, {1280,720} } do
         local f = fixture(screen[1], screen[2]); local box = f.controller.frame
         local w, h, scale = box.Size.X.Offset, box.Size.Y.Offset, f.logical.scale
         local footer = rect(box.CloseStory, w, h)
         local passport = rect(box.DatePassport, w, h)
+        local stamps=rect(box.DatePassport.Stamps,passport.w,passport.h)
+        for _,place in Locations.list do
+            local stamp=box.DatePassport.Stamps.children["Place_"..place.id];local r=rect(stamp,stamps.w,stamps.h)
+            local label=rect(stamp.Place,r.w,r.h)
+            assert(f.ui.textHeight(stamp.Place.Text,stamp.Place.TextSize,label.w,true)<=label.h,"Story passport clips a place name")
+        end
         for i = 1, 3 do
             local button = box["ReplayStage_" .. i]; local b = rect(button, w, h)
             assert(b.w * scale >= 44 and b.h * scale >= 44)
             assert(b.x >= 0 and b.x + b.w <= w)
-            if f.logical.mobile then assert(b.y >= passport.y + passport.h + 4) end
+            if f.logical.mobile then assert(b.y >= passport.y + passport.h + 4,string.format("%dx%d stage %.2f passport %.2f+%.2f",screen[1],screen[2],b.y,passport.y,passport.h)) end
             assert(b.y + b.h + 8 <= footer.y, "A replay control overlaps the footer")
             for _, name in { "Stage", "BestScore" } do
                 local label = button[name]; local r = rect(label, b.w, b.h)

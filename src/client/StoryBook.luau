@@ -20,6 +20,7 @@ function Book.mount(parent, character, variant, photo, options)
     local mobile = options.mobile
     local compact = mobile and (UI.scale or 1) < .5
     local w = compact and math.clamp((options.availableWidth or 480) - 48, 436, 700) or (mobile and 436 or 1020)
+    local passportH=Album.passportHeight(mobile and w-48 or 360)
     local actionH = math.max(66, UI.touchMinimum or 0)
     local iconSize = compact and UI.readableSize(38, 18) or 38
     local stageFont = UI.readableSize(mobile and 14 or 19, 10)
@@ -31,7 +32,7 @@ function Book.mount(parent, character, variant, photo, options)
     local stageH = math.max(100, UI.touchMinimum or 0, scoreY + scoreH + 8)
     local preferredH = mobile and 574 + stageH + actionH or 618 + actionH
     local h = math.min(preferredH, (options.availableHeight or 760) - 24)
-    local compression = preferredH - h
+    local compression = preferredH - h + (mobile and math.max(0,passportH-33) or 0)
     local box = UI.frame(parent, "StoryDialog", UDim2.new(.5, -w / 2, .5, -h / 2), UDim2.fromOffset(w, h), C.card, 4)
     box.ZIndex = 2
     local page = UI.frame(box, "Paper", UDim2.fromOffset(8, 8), UDim2.new(1, -16, 1, -16), C.panel, 2)
@@ -73,8 +74,7 @@ function Book.mount(parent, character, variant, photo, options)
     tape.Rotation = -4; tape.BackgroundTransparency = .18; tape.ZIndex = 3
     local stageY = mobile and 520 - compression or 120
     local passportY = mobile and 477 - compression or 3 * (stageH + 14) + 132
-    local passportH = compact and math.max(30, math.ceil(UI.readableSize(11, 10) * 1.5)) or 30
-    if compact then stageY = math.max(stageY, passportY + passportH + 10) end
+    if mobile then stageY = math.max(stageY, passportY + passportH + 10) end
     local stages = { { "Переписка", Icons.phone }, { "Звонок", Icons.video }, { "Свидание", Icons.photo } }
     for i, stage in stages do
         local cellW = mobile and (w - 64) / 3 or 360
@@ -94,7 +94,7 @@ function Book.mount(parent, character, variant, photo, options)
     if not mobile then
         center(box, "Memory", Collection.memento(character), UDim2.fromOffset(36, 532 - compression), UDim2.fromOffset(546, 55), UI.readableSize(18), C.muted)
     end
-    local hintY = mobile and stageY + stageH + 3 or passportY + 40
+    local hintY = mobile and stageY + stageH + 3 or passportY + passportH + 10
     local replayHint = center(box, "ReplayHint", "Выбери этап — сыграем ещё?", UDim2.fromOffset(mobile and 24 or 636, hintY), UDim2.fromOffset(mobile and w - 48 or 360, 24), UI.readableSize(12, 10), C.muted)
     replayHint.Visible = not compact
     local footerY = h - actionH - 16

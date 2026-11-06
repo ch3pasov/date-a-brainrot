@@ -58,6 +58,14 @@ test("Actual result keeps every block ordered inside a scrollable body and fixed
                 assert(r.x>=0 and r.x+r.w<=view.w)
             end
             assert(previous+8<=content.CanvasSize.Y.Offset)
+            if content.DatePassport then
+                local p=rect(content.DatePassport,view.w,view.h);local stamps=rect(content.DatePassport.Stamps,p.w,p.h)
+                for _,place in Locations.list do
+                    local stamp=content.DatePassport.Stamps.children["Place_"..place.id];local r=rect(stamp,stamps.w,stamps.h)
+                    local label=rect(stamp.Place,r.w,r.h)
+                    assert(f.ui.textHeight(stamp.Place.Text,stamp.Place.TextSize,label.w,true)<=label.h,"Selfie result clips a place name")
+                end
+            end
             if stage==3 and not passed then
                 local review=rect(content.DateReview,view.w,view.h)
                 assert(review.y>=previous+8 and review.y+review.h<=content.CanvasSize.Y.Offset)

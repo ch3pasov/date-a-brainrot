@@ -72,7 +72,7 @@ function Result.mount(parent, result, options)
         tape.Rotation=-4;tape.BackgroundTransparency=.2;tape.ZIndex=4
         y+=photoH+14
         if options.photo then
-            local passportH=math.max(30,math.ceil(UI.readableSize(11,10)*1.5))
+            local passportH=Album.passportHeight(usableW)
             Album.passport(content,options.photo,UDim2.fromOffset(0,y),UDim2.fromOffset(usableW,passportH))
             y+=passportH+16
         end

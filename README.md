@@ -104,7 +104,11 @@ Empty-album and waiting postcards fit measured text and keep their actions reach
 When no new cards remain, waiting messages lead to recorded likes without suggesting
 that the exhausted feed still has someone new.
 
-432 offline checks and both source builds pass. The full-catalog simulation covers
+Full albums keep usable browsing space on short screens, with compact totals and
+measured photo captions. Venue stamps fit their text in the album, story and selfie
+result. All 23 pages are checked across seven window sizes.
+
+433 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
