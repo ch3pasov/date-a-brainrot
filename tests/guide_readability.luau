@@ -10,7 +10,7 @@ local function test(name,fn)
 end
 local rect=Harness.rect
 test("General and stage guides keep measured text and fixed closing actions across six screens",function()
-    for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{1280,720}}do
+    for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{568,320},{1280,720}}do
         for _,mode in {{},{stage=1},{stage=2},{stage=3},{stage=3,remixId="long"},{stage=3,remixId="reverse"}}do
             local h=Harness.new(screen[1],screen[2]);local u=h.environment.UDim2
             h.ui.overlay=function(parent,name)return h.ui.frame(parent,name,u.fromScale(0,0),u.fromScale(1,1))end
@@ -46,6 +46,16 @@ test("General and stage guides keep measured text and fixed closing actions acro
                 assert(r.y>=bottom);bottom=r.y+r.h
                 fits(row.Detail,r.w,r.h)
                 local seal=rect(row.NumberSeal,r.w,r.h);fits(row.NumberSeal.Number,seal.w,seal.h)
+            end
+            if h.logical.mobile then assert(area.KeyboardHint==nil)
+            else
+                local r=rect(area.KeyboardHint,content.w,ch);assert(r.y>=bottom);bottom=r.y+r.h
+                fits(area.KeyboardHint.Detail,r.w,r.h)
+                local text=area.KeyboardHint.Detail.Text
+                if mode.stage==1 then assert(text:find("1–3",1,true) and not text:find("Enter",1,true))
+                elseif mode.stage==2 then assert(text:find("Пробел",1,true) and text:find("слева направо",1,true))
+                elseif mode.stage==3 then assert(text:find("Enter",1,true) and text:find("по номеру",1,true))
+                else assert(text:find("←",1,true) and text:find("→",1,true) and text:find("1–4",1,true))end
             end
             if not mode.stage then
                 local r=fits(area.CollectionTitle,content.w,ch);assert(r.y>=bottom);bottom=r.y+r.h

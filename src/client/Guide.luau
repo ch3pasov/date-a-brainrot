@@ -50,6 +50,16 @@ function Guide.open(canvas, mobile, close, metadata)
         rowHeights[i]=math.max(60,sealW+12,UI.textHeight(text,font,w-48-detailX-10,true)+12)
         y+=rowHeights[i]+10
     end
+    local keyboardText,keyboardY,keyboardH
+    if not mobile then
+        keyboardText=active and ({
+            "С клавиатуры: 1–3 выбирают ответ с тем же номером.",
+            "С клавиатуры: 1–3 — жесты слева направо. Пробел выбирает первый жест.",
+            "С клавиатуры: Enter запускает показ. После показа 1–4 выбирают предмет по номеру на подписи.",
+        })[stage] or "С клавиатуры: ← — дальше, → — лайк. В переписке и звонке — 1–3. На свидании — Enter для старта и 1–4 для ответов."
+        keyboardY=y+2;keyboardH=UI.textHeight(keyboardText,font,w-72,false)+20
+        y=keyboardY+keyboardH+12
+    end
     local collectionTitle="ПОСЛЕ ПЕРВОГО СЕЛФИ"
     local collectionNotes={
         "Открой фото в альбоме. В ремиксах ждут шесть сувениров — любимый можно прикрепить к фото.",
@@ -119,6 +129,10 @@ function Guide.open(canvas, mobile, close, metadata)
         local number=UI.frame(row,"NumberSeal",UDim2.new(0,12,.5,-sealW/2),UDim2.fromOffset(sealW,sealW),i==2 and C.pink or C.mint,18)
         local n=UI.label(number,"Number",tostring(i),UDim2.fromScale(0,0),UDim2.fromScale(1,1),numberFont,C.panel,true);n.TextXAlignment=Enum.TextXAlignment.Center
         UI.label(row,"Detail",text,UDim2.fromOffset(detailX,6),UDim2.new(1,-detailX-10,1,-12),font,C.ink,true)
+    end
+    if keyboardText then
+        local keyboard=UI.frame(content,"KeyboardHint",UDim2.fromOffset(0,keyboardY),UDim2.new(1,0,0,keyboardH),C.aqua,4)
+        UI.label(keyboard,"Detail",keyboardText,UDim2.fromOffset(12,10),UDim2.new(1,-24,1,-20),font,C.ink)
     end
     if not active then
         UI.label(content,"CollectionTitle",collectionTitle,UDim2.fromOffset(0,sectionY),UDim2.new(1,0,0,sectionH),font,C.ink,true)
