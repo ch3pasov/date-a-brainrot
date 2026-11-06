@@ -165,6 +165,17 @@ test("Later misses and repeat wins keep visit stamps without extra revisions or 
     assert(Collection.passport(p.album[key]).visited.cafe)
     assert(Logic.publicSnapshot(p,1400).album[1].visitedLocations.cafe)
 end)
+test("Each character has a distinct short ending with a compatible personality fallback",function()
+    local endings={};local authored=require("../src/shared/CharacterMementos");local count=0
+    for _,character in Catalog do
+        local text=Collection.memento(character);local length=utf8.len(text)
+        assert(text==authored[character.id] and length and length>=35 and length<=80 and not endings[text])
+        endings[text]=true;count+=1
+    end
+    local authoredCount=0;for _ in authored do authoredCount+=1 end;assert(count==authoredCount)
+    assert(Collection.memento({id="unknown",personality="music"})==Collection.memento("music"))
+    assert(type(Collection.memento(nil))=="string")
+end)
 test("Perfect vibe rejects invalid scores instead of treating them as a trophy", function()
     for _, invalid in {0/0,math.huge,1.1,"1",false} do
         assert(not Collection.perfect({scores={["1"]=1,["2"]=1,["3"]=invalid}}))

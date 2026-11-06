@@ -54,7 +54,11 @@ Earned remix souvenirs now also prove a visit to their venue, including older
 saves. Travel frames unlock without repeating ordinary dates at the same places.
 Saved selfie identity stays intact, and remix-result text expands to fit.
 
-375 offline checks and both source builds pass. The full-catalog simulation covers
+Each character now has a short personal ending for the first selfie, echoing their
+conversation. The same memory appears in the wide story book; replay results keep
+the record-focused message. These 34 endings add no saved-profile fields.
+
+378 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.

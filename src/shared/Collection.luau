@@ -2,6 +2,7 @@ local Catalog = if script then require(script.Parent.Catalog) else require("./Ca
 local Config = if script then require(script.Parent.Config) else require("./Config")
 local Locations = if script then require(script.Parent.Locations) else require("./Locations")
 local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
+local Mementos = if script then require(script.Parent.CharacterMementos) else require("./CharacterMementos")
 local Collection = {}
 local valid = {}; for _, character in Catalog do valid[character.id] = true end
 function Collection.passport(photo)
@@ -48,7 +49,9 @@ function Collection.goalHint(photo)
     if remixes.collected < remixes.total then return "СУВЕНИРЫ " .. remixes.collected .. "/" .. remixes.total .. " →" end
     return "ВСЕ СУВЕНИРЫ СОБРАНЫ ♥"
 end
-function Collection.memento(personality)
+function Collection.memento(character)
+    if type(character)=="table" and Mementos[character.id] then return Mementos[character.id] end
+    local personality=type(character)=="table" and character.personality or character
     return ({
         food = "Вечер, когда последний кусочек стал двумя маленькими победами.",
         music = "Наш первый общий ритм. Немного странный, зато точно наш.",

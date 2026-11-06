@@ -2,6 +2,7 @@ local Harness=require("./support/ui_harness")
 local Config=require("../src/shared/Config")
 local Locations=require("../src/shared/Locations")
 local Collection=require("../src/shared/Collection")
+local Catalog=require("../src/shared/Catalog")
 local Remix=require("../src/shared/DateRemix")
 local fs=require("@lune/fs")
 local serde=require("@lune/serde")
@@ -12,16 +13,16 @@ local function test(name,fn)
     assert(ok,name..": "..tostring(err))
 end
 local rect=Harness.rect
-local function fixture(width,height,stage,passed,practice)
+local function fixture(width,height,stage,passed,practice,character)
     local f=Harness.new(width,height);f.scenes={};f.back=0;f.next=0
     local icons=f.module("src/client/ToyIcons.luau")
     local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=Remix,Icons=icons})
     local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
     local album=f.module("src/client/Album.luau",{Collection=Collection,Locations=Locations})
     local review=f.module("src/client/DateReview.luau",{Locations=Locations})
-    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Album=album,Sticker=sticker,PhotoFrame=frame,DateReview=review})
+    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Collection=Collection,Album=album,Sticker=sticker,PhotoFrame=frame,DateReview=review})
     local options=f.options();options.stage=stage
-    options.character={name="Trippi Troppi Troppa Trippa",personality="food"}
+    options.character=character or {name="Trippi Troppi Troppa Trippa",personality="food"}
     options.photo={locationId="rooftop",visitedLocations={park=true,cafe=true},avatarUserId=42,avatarSnapshot={saved=true},remixScores={["park:long"]=1},pinnedSouvenir="park:long",photoPose="heart",photoFrame="travel"}
     options.mount=function(_,settings)table.insert(f.scenes,settings)end
     options.back=function()f.back+=1 end;options.continue=function()f.next+=1 end
@@ -99,6 +100,15 @@ test("Results name the next activity and failed retries keep the saved-record me
     assert(f.box.ResultContent.Description.Text:find("Нужно 4 из 6",1,true))
     assert(f.box.ResultContent.Description.Text:find("Селфи сохранено",1,true))
     assert(f.box.BackToMatches.Text=="К истории" and f.box.ResultContinue.Text=="Ещё раунд")
+end)
+test("Every personal ending appears in the first selfie result and fits its measured block",function()
+    for _,character in Catalog do for _,screen in {{240,320},{390,650},{1280,720}}do
+        local f=fixture(screen[1],screen[2],3,true,false,character)
+        local content=f.box.ResultContent;local label=content.Description
+        assert(label.Text:find(Collection.memento(character),1,true))
+        assert(label.Size.Y.Offset>=f.ui.textHeight(label.Text,label.TextSize,label.Size.X.Offset,false))
+        assert(label.Position.Y.Offset+label.Size.Y.Offset<=content.CanvasSize.Y.Offset)
+    end end
 end)
 test("Text sizing uses the rendered font and falls back safely for multiline or failed measurement",function()
     local f=Harness.new(390,650);local calls={};local fail=false

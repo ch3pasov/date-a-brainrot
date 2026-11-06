@@ -92,7 +92,7 @@ function Book.mount(parent, character, variant, photo, options)
     end
     Album.passport(box, photo, UDim2.fromOffset(mobile and 24 or 636, passportY), UDim2.fromOffset(mobile and w - 48 or 360, passportH))
     if not mobile then
-        center(box, "Memory", Collection.memento(character.personality), UDim2.fromOffset(36, 532 - compression), UDim2.fromOffset(546, 55), UI.readableSize(18), C.muted)
+        center(box, "Memory", Collection.memento(character), UDim2.fromOffset(36, 532 - compression), UDim2.fromOffset(546, 55), UI.readableSize(18), C.muted)
     end
     local hintY = mobile and stageY + stageH + 3 or passportY + 40
     local replayHint = center(box, "ReplayHint", "Выбери этап — сыграем ещё?", UDim2.fromOffset(mobile and 24 or 636, hintY), UDim2.fromOffset(mobile and w - 48 or 360, 24), UI.readableSize(12, 10), C.muted)

@@ -1,6 +1,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Locations = require(Shared.Locations)
+local Collection = require(Shared.Collection)
 local Album = require(script.Parent.Album)
 local RemixResult = require(script.Parent.RemixResult)
 local Sticker = require(script.Parent.SouvenirSticker)
@@ -108,7 +109,7 @@ function Result.mount(parent, result, options)
     if result.practice then
         description=result.passed and ("Рекорд: "..math.floor(result.best*100+.5).."%. Ваша история остаётся в альбоме.") or ("Рекорд: %d%%. Нужно %d из %d. Селфи сохранено — попробуем ещё?"):format(math.floor(result.best*100+.5),required,total)
     elseif result.passed then
-        description=selfie and "Вы вдвоём, это место, этот момент. Забирай снимок в альбом!" or (stage==1 and "Переписка удалась. Пора увидеть друг друга — впереди видеозвонок." or "Есть общий ритм. Впереди свидание — выберем место?")
+        description=selfie and (Collection.memento(options.character).."\nЗабирай снимок в альбом!") or (stage==1 and "Переписка удалась. Пора увидеть друг друга — впереди видеозвонок." or "Есть общий ритм. Впереди свидание — выберем место?")
     else
         description=("Нужны %s: %d из %d. Можно повторить — мэтч остаётся с тобой."):format(goal,required,total)
     end

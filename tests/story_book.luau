@@ -6,6 +6,7 @@ local roblox = require("@lune/roblox")
 local serde = require("@lune/serde")
 local Screen = require("../src/shared/Layout")
 local Collection = require("../src/shared/Collection")
+local Catalog = require("../src/shared/Catalog")
 local Locations = require("../src/shared/Locations")
 local Remix = require("../src/shared/DateRemix")
 local source = fs.readFile("src/client/StoryBook.luau")
@@ -20,7 +21,7 @@ local function section(text, first, last)
     local a = assert(text:find(first, 1, true))
     return text:sub(a, assert(text:find(last, a, true)) - 1)
 end
-local function fixture(width, height)
+local function fixture(width, height, character)
     local logical = Screen.resolve(width, height - 58, true)
     local f = { logical = logical, replays = {}, again = 0, back = 0, disposed = 0, edits = 0 }
     local function node(class, props, parent)
@@ -66,7 +67,7 @@ local function fixture(width, height)
     } })()
     f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true }, photoPose = "heart",
         scores = { ["1"] = 1, ["2"] = 1, ["3"] = 1 }, visitedLocations = { cafe = true } }
-    f.controller = book.mount(node("Frame", { Name = "Overlay" }), { name = "Glorbo Fruttodrillo", personality = "nature" },
+    f.controller = book.mount(node("Frame", { Name = "Overlay" }), character or { name = "Glorbo Fruttodrillo", personality = "nature" },
         { label = "Золотой", color = { 1, 1, 0 } }, f.photo, {
         mobile = logical.mobile, availableHeight = logical.height, availableWidth = width / logical.scale,
         userId = 1, mount = function(_, options) f.scene = options; return { dispose = function() f.disposed += 1 end } end,
@@ -114,6 +115,15 @@ test("Actual story text, passport and 44px actions stay separate at all checked 
         local again = rect(box.DateAgain, w, h)
         assert(footer.w * scale >= 44 and footer.h * scale >= 44)
         assert(again.w * scale >= 44 and again.h * scale >= 44 and footer.x + footer.w + 8 <= again.x)
+    end
+end)
+test("The wide story book uses every character's own short photo memory",function()
+    for _,character in Catalog do
+        local f=fixture(1280,720,character);local box=f.controller.frame;local memory=box.Memory
+        assert(memory.Text==Collection.memento(character))
+        local lines=math.ceil(utf8.len(memory.Text)*memory.TextSize*.75/memory.Size.X.Offset)
+        assert(math.ceil(lines*memory.TextSize*1.35)<=memory.Size.Y.Offset)
+        assert(memory.Position.Y.Offset+memory.Size.Y.Offset+8<=box.CloseStory.Position.Y.Offset)
     end
 end)
 test("Compact book preserves saved photo identity and each action", function()
