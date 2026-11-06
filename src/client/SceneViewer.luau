@@ -180,14 +180,15 @@ function Scene.mount(parent, character, variant, options)
     local items = {}
     local collection, collected = nil, {}
     local trayTop = .53
+    local collectionTotal = DateCollection.capacity({ total = options.dateTotal })
     if options.interactive then
         for i, definition in location.items do items[i] = makeItem(world, definition, i, Vector3.new(-5.1 + (i - 1) * 3.4, 1, (i == 1 or i == 4) and 3.9 or 4.8), true) end
         collection = Instance.new("Model"); collection.Name = "SharedDateCollection"; collection.Parent = world
         local picnic = id == "park"
         part(collection, picnic and "PicnicSpot" or "SharedTray", Vector3.new(2.9, .16, 2.15), Vector3.new(0, .45, 1.6), picnic and PicnicPark.coral or Color3.fromRGB(234, 180, 125))
-        for slot = 1, DateCollection.maximum do
-            local x, z = (slot % 2 == 1 and -.65 or .65), (slot <= 2 and 1.1 or 2.1)
-            part(collection, "PlaceSetting_" .. slot, Vector3.new(1.08, .025, .84), Vector3.new(x, trayTop, z), Color3.fromRGB(255, 247, 226))
+        for slot = 1, collectionTotal do
+            local x, z = DateCollection.slot(slot, collectionTotal)
+            part(collection, "PlaceSetting_" .. slot, Vector3.new(collectionTotal == 6 and .84 or 1.08, .025, .84), Vector3.new(x, trayTop, z), Color3.fromRGB(255, 247, 226))
         end
         if not picnic then
             for _, z in { .57, 2.63 } do part(collection, "TrayEdge", Vector3.new(2.9, .18, .09), Vector3.new(0, .56, z), Color3.fromRGB(197, 136, 89)) end
@@ -297,7 +298,8 @@ function Scene.mount(parent, character, variant, options)
     local function updateCollection(now)
         for _, miniature in collected do
             local slot = miniature.slot
-            local target = Vector3.new(slot % 2 == 1 and -.65 or .65, trayTop + .03 + miniature.bottomOffset, slot <= 2 and 1.1 or 2.1)
+            local x, z = DateCollection.slot(slot, collectionTotal)
+            local target = Vector3.new(x, trayTop + .03 + miniature.bottomOffset, z)
             local position = target
             if miniature.born and Feedback.motionEnabled then
                 local progress = math.clamp((now - miniature.born) / .44, 0, 1)
@@ -395,7 +397,7 @@ function Scene.mount(parent, character, variant, options)
             if not miniature then
                 local source = items[entry.choice].model
                 local copy = source:Clone(); copy.Name = "CollectedItem_" .. entry.attempt
-                copy:ScaleTo(copy:GetScale() * .6)
+                copy:ScaleTo(copy:GetScale() * (collectionTotal == 6 and .46 or .6))
                 local bounds, size = copy:GetBoundingBox()
                 miniature = {
                     model = copy, choice = entry.choice, origin = source:GetPivot().Position,

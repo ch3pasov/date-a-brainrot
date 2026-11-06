@@ -7,6 +7,7 @@ local serde = require("@lune/serde")
 local Screen = require("../src/shared/Layout")
 local Collection = require("../src/shared/Collection")
 local Locations = require("../src/shared/Locations")
+local Remix = require("../src/shared/DateRemix")
 local source = fs.readFile("src/client/StoryBook.luau")
 local uiSource = fs.readFile("src/client/UI.luau")
 local albumSource = fs.readFile("src/client/Album.luau")
@@ -60,7 +61,7 @@ local function fixture(width, height)
     end
     local bookFirst = assert(source:find("local C = UI.colors", 1, true))
     local book = luau.load(source:sub(bookFirst), { environment = {
-        UI = ui, Collection = Collection, Locations = Locations, Album = album, Icons = icons,
+        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons,
         Color3 = roblox.Color3, UDim2 = roblox.UDim2, Enum = enum,
     } })()
     f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true },

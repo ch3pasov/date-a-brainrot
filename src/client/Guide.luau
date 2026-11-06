@@ -1,6 +1,7 @@
 local UI = require(script.Parent.UI)
 local Feedback = require(script.Parent.Feedback)
 local Icons = require(script.Parent.ToyIcons)
+local Remix = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared").DateRemix)
 local C = UI.colors
 local Guide = {}
 local instructions = {
@@ -24,11 +25,17 @@ function Guide.open(canvas, mobile, close, metadata)
     local hasVersion = type(version)=="number" and version>=0 and version<math.huge and version%1==0
     local stage = metadata.stage
     local active = type(stage)=="number" and stage>=1 and stage<=3 and stage%1==0
+    local remix = active and stage == 3 and Remix.get(metadata.remixId)
     local steps = active and instructions[stage] or {
         "Сердце — лайк. Крестик — дальше.",
         "Ответ может прийти, пока тебя нет.",
         "Чат, жесты, свидание — ваше селфи.",
     }
+    if remix then steps = {
+        remix.id == "long" and "Запомни шесть предметов. Это большой заказ!" or "Запомни четыре предмета. Сейчас будет перемотка!",
+        remix.id == "reverse" and "Повтори от последнего предмета к первому." or "Повтори предметы в том же порядке.",
+        ("Нужно %d из %d — и сувенир ваш!"):format(remix.required, remix.total),
+    } end
     local font = UI.readableSize(17)
     local rowH = math.max(60,(font+3)*(font>24 and 3 or 2)+8)
     local buttonH = math.max(66,UI.touchMinimum or 0)

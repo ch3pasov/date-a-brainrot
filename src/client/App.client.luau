@@ -28,6 +28,7 @@ local DatePlaces = require(script.Parent.DatePlaces)
 local ResultCard = require(script.Parent.ResultCard)
 local StoryBook = require(script.Parent.StoryBook)
 local MatchLetter = require(script.Parent.MatchLetter)
+local RemixBoard = require(script.Parent.RemixBoard)
 local net = ReplicatedStorage:WaitForChild("BrainrotNet")
 local request = net:WaitForChild("Request")
 local changed = net:WaitForChild("Changed")
@@ -57,7 +58,7 @@ local actions = {}
 local profileReady, startupRunning, lastLoadError = false, false, nil
 local storageStatus = { state = "loading" }
 local beginLoad, renderLoadScreen
-local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult
+local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult, showRemixes
 local mobile = false
 local width, height = 1200, 760
 local playerGui = player:WaitForChild("PlayerGui")
@@ -537,7 +538,7 @@ local albumPage = 1
 showGuide = function()
     if busy or swiping or gameInputLocked then return end
     closeModal()
-    modal = Guide.open(canvas, mobile, function() closeModal(); render() end, { placeVersion = state.placeVersion, storageMode = state.storageMode, setPreference = setPreference, stage = activeGame and activeGame.stage, availableHeight = height })
+    modal = Guide.open(canvas, mobile, function() closeModal(); render() end, { placeVersion = state.placeVersion, storageMode = state.storageMode, setPreference = setPreference, stage = activeGame and activeGame.stage, remixId = activeGame and activeGame.remixId, availableHeight = height })
     modalRebuild = function() showGuide() end
 end
 actions.guide = showGuide
@@ -563,8 +564,22 @@ showStory = function(key)
         back = closeModal,
         replay = function(stage) closeModal(); startGame(key, stage) end,
         dateAgain = function() closeModal(); startGame(key, 3) end,
+        remixes = function() showRemixes(key) end,
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .93) end
+end
+showRemixes = function(key)
+    local photo
+    for _, item in state.album do if item.key == key then photo = item; break end end
+    if not photo then return end
+    closeModal(); modalRebuild = function() showRemixes(key) end
+    modal = UI.overlay(canvas, "RemixOverlay", .06)
+    modalViewer = RemixBoard.mount(modal, photo, {
+        mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth,
+        play = function(locationId, remixId) startGame(key, 3, locationId, remixId) end,
+        back = function() showStory(key) end,
+    })
+    if not restoringModal then Feedback.pop(modalViewer.frame, .94) end
 end
 showMatch = function(key)
     local m = getMatch(key); if not m then return end
@@ -623,8 +638,8 @@ showResult = function(result, key, completedStage, completedLocation)
     local box = ResultCard.mount(overlay, result, {
         mobile = mobile, availableHeight = height, stage = stage, character = character, photo = photo, locationId = completedLocation,
         mount = function(art, options) modalViewer = mount(art, character.id, match.variantId, options) end,
-        back = function() closeModal(); if result.practice then nav("album"); showStory(key) else nav("matches") end end,
-        continue = function() closeModal(); if result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album") else startGame(key) end end,
+        back = function() closeModal(); if result.remixId then nav("album"); showRemixes(key) elseif result.practice then nav("album"); showStory(key) else nav("matches") end end,
+        continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album") else startGame(key) end end,
     })
     if not restoringModal then
         Feedback.pop(box, .92); Feedback.play(result.passed and "success" or "miss")
@@ -698,13 +713,13 @@ local function chooseLocation(key, practiceStage)
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .94) end
 end
-startGame = function(key, practiceStage, locationId)
+startGame = function(key, practiceStage, locationId, remixId)
     local match = getMatch(key)
     if not match then return end
     local stage = practiceStage or match.stage
     if stage == 3 and not locationId then chooseLocation(key, practiceStage); return end
     closeModal()
-    local response = rpc("startGame", { key = key, practiceStage = practiceStage, locationId = locationId })
+    local response = rpc("startGame", { key = key, practiceStage = practiceStage, locationId = locationId, remixId = remixId })
     if not response then return end
     activeTab = "matches"; activeGame = response; match.unread = false; render()
 end

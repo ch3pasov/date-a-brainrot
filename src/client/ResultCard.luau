@@ -2,11 +2,13 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Locations = require(Shared.Locations)
 local Album = require(script.Parent.Album)
+local RemixResult = require(script.Parent.RemixResult)
 local UI = require(script.Parent.UI)
 local C = UI.colors
 local Result = {}
 
 function Result.mount(parent, result, options)
+    if result.remixId then return RemixResult.mount(parent, result, options) end
     local stage, mobile = options.stage, options.mobile
     local selfie = result.passed and stage == 3 and options.character ~= nil
     local w = mobile and 436 or 650

@@ -8,6 +8,7 @@ local Config = require(Shared.Config)
 local Catalog = require(Shared.Catalog)
 local Games = require(Shared.Minigames)
 local Locations = require(Shared.Locations)
+local Remix = require(Shared.DateRemix)
 local AvatarData = require(Shared.AvatarData)
 local Store = require(script.Parent.ProfileStore)
 local net = Instance.new("Folder"); net.Name = "BrainrotNet"; net.Parent = ReplicatedStorage
@@ -144,7 +145,7 @@ local function feed(player)
     return out
 end
 local function gameView(session)
-    local out = { token = session.token, key = session.key, stage = session.stage, step = session.step, correct = session.correct, attempts = session.attempts, practice = session.practice }
+    local out = { token = session.token, key = session.key, stage = session.stage, step = session.step, correct = session.correct, attempts = session.attempts, practice = session.practice, remixId = session.remixId, total = session.total }
     if session.stage == 1 then
         local q = session.chat[session.step]
         out.prompt = q.prompt; out.options = q.options; out.messages = session.messages
@@ -152,13 +153,19 @@ local function gameView(session)
         out.gesture = Locations.gesture(session.attempts + 1, session.gestureSeed); out.serverStart = session.serverStart; out.target = 6; out.hits = session.hits
     else
         if session.step == 1 then out.sequence = session.sequence end
-        out.revealSeconds = 3; out.revealEnds = session.serverStart + 3; out.theme = session.personality; out.locationId = session.locationId; out.choices = session.choices; out.hits = session.hits
+        out.revealSeconds = session.revealSeconds or 3; out.revealEnds = session.serverStart + out.revealSeconds; out.theme = session.personality; out.locationId = session.locationId; out.choices = session.choices; out.hits = session.hits
     end
     return out
 end
 local function finish(player, session, score)
     games[player] = nil
-    local recap = { hits = table.clone(session.hits), total = session.stage == 2 and 6 or 4 }
+    local recap = { hits = table.clone(session.hits), total = session.total or (session.stage == 2 and 6 or 4) }
+    if session.remixId then
+        local ok, result = Logic.finishRemix(profiles[player], session.key, session.locationId, session.remixId, score)
+        if not ok then return { error = result } end
+        return payload(player, { result = "remix", practice = true, remixId = session.remixId, locationId = session.locationId,
+            score = score, best = result.best, improved = result.improved, passed = result.passed, unlocked = result.unlocked, stage = 3, recap = recap })
+    end
     if session.practice then
         local ok, result = Logic.practiceStage(profiles[player], session.key, session.stage, score)
         if not ok then return { error = result } end
@@ -211,6 +218,7 @@ local function handle(player, action, args)
             if not match or match.stage ~= 4 or not p.album[args.key] then return { error = "story_not_complete" } end
         elseif not match or match.stage > 3 then return { error = "no_active_match" } end
         local stage = practiceStage or match.stage
+        if args.remixId ~= nil and (not Remix.get(args.remixId) or practiceStage ~= 3) then return { error = "invalid_remix" } end
         local locationId = args.locationId or match.dateLocationId or "park"
         if stage == 3 and not Locations.valid(locationId) then return { error = "invalid_location" } end
         match.unread = false; p.revision += 1
@@ -219,7 +227,17 @@ local function handle(player, action, args)
         session.personality = character.personality
         if session.stage == 1 then session.chat = Games.chatFor(character, random:NextInteger(1, 2147483646)); session.messages = {} end
         if session.stage == 2 then session.gestureSeed = random:NextInteger(1, Locations.gesturePatternCount); session.hits = {} end
-        if session.stage == 3 then session.sequence = {}; session.choices = {}; session.hits = {}; for _ = 1, 4 do table.insert(session.sequence, random:NextInteger(1, 4)) end end
+        if session.stage == 3 then
+            session.sequence = {}; session.choices = {}; session.hits = {}
+            session.remixId = args.remixId
+            if session.remixId then
+                session.sequence = Remix.sequence(session.remixId, function(maximum) return random:NextInteger(1, maximum) end)
+                session.revealSeconds = #session.sequence * .8
+            else
+                for _ = 1, 4 do table.insert(session.sequence, random:NextInteger(1, 4)) end
+            end
+            session.total = #session.sequence
+        end
         games[player] = session; return gameView(session)
     elseif action == "cancelGame" then
         games[player] = nil

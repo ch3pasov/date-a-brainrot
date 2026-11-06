@@ -11,6 +11,17 @@ repository contains the project's original gameplay, interface, procedural scene
 and tests. **Third-party character art is not included.** The live game uses models
 obtained through Roblox Creator Store; those files are not licensed here.
 
+## Development update — November 6, 2026
+
+Completed stories now unlock two optional date remixes: a six-item order and a
+reverse-order memory game. Collect six illustrated souvenirs per story, one for
+each location and mode. Scores and souvenirs persist separately from the original
+selfie and best scores. Retries are unlimited and never remove earned progress.
+
+301 offline checks and both source builds pass. New UI geometry and actions are
+checked on small and wide layouts; Roblox rendering and live persistence have
+not been playtested for this update. The live version below is a separate release.
+
 ## Released checkpoint
 
 - Live Roblox place version: **29**.
@@ -52,4 +63,4 @@ made to ownership of meme characters, Roblox, or player-created avatar assets.
 
 The project is released as a prototype. Physical-device performance, audio QA,
 independent friend access, and visual polish remain limited; see
-[RELEASE_NOTES.md](RELEASE_NOTES.md). No new features are scheduled.
+[RELEASE_NOTES.md](RELEASE_NOTES.md). Development resumed on November 6, 2026.

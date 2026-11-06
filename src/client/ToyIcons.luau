@@ -66,4 +66,44 @@ function Icons.gesture(parent, gesture, position, size)
     end
     return icon
 end
+function Icons.souvenir(parent, shape, position, size)
+    local icon = canvas(parent, "SouvenirIcon", position, size)
+    if shape == "cup" then
+        piece(icon, "Handle", .66, .32, .29, .36, C.ink, 10)
+        piece(icon, "HandleHole", .71, .39, .16, .20, C.panel, 6)
+        piece(icon, "Cup", .15, .24, .59, .59, C.pink, 8)
+        piece(icon, "Cocoa", .18, .20, .53, .17, C.ink, 10)
+        piece(icon, "Marshmallow", .34, .22, .17, .08, C.panel, 3)
+        piece(icon, "Saucer", .07, .85, .79, .07, C.ink, 6)
+    elseif shape == "donut" then
+        piece(icon, "Dough", .08, .12, .84, .78, C.ink, 100)
+        piece(icon, "Icing", .13, .14, .74, .68, C.pink, 100)
+        piece(icon, "Hole", .38, .35, .24, .24, C.panel, 100)
+        for i = 1, 5 do piece(icon, "Sprinkle" .. i, .18 + (i % 3) * .22, i < 3 and .25 or .66, .10, .04, C.yellow, 2).Rotation = i * 23 end
+    elseif shape == "apple" then
+        piece(icon, "Stem", .47, .04, .07, .26, C.ink, 2).Rotation = 12
+        piece(icon, "Leaf", .53, .08, .28, .14, C.mint, 10).Rotation = -18
+        piece(icon, "AppleLeft", .12, .28, .53, .62, C.pink, 100)
+        piece(icon, "AppleRight", .38, .28, .50, .62, C.pink, 100)
+        piece(icon, "Shine", .24, .39, .09, .18, C.panel, 10).Rotation = 18
+    elseif shape == "flower" then
+        piece(icon, "Stem", .47, .40, .06, .56, C.mint, 2)
+        piece(icon, "Leaf", .50, .72, .26, .12, C.mint, 10).Rotation = -25
+        for i = 0, 4 do
+            local a = i * math.pi * 2 / 5
+            piece(icon, "Petal" .. i, .34 + math.cos(a) * .22, .25 + math.sin(a) * .22, .31, .31, C.pink, 100)
+        end
+        piece(icon, "Center", .37, .29, .26, .26, C.yellow, 100)
+    elseif shape == "gift" then
+        piece(icon, "Box", .14, .32, .72, .56, C.pink, 5)
+        piece(icon, "Lid", .09, .26, .82, .16, C.ink, 3)
+        piece(icon, "Ribbon", .44, .27, .13, .61, C.yellow, 1)
+        piece(icon, "BowLeft", .22, .09, .29, .19, C.yellow, 8).Rotation = 22
+        piece(icon, "BowRight", .50, .09, .29, .19, C.yellow, 8).Rotation = -22
+    else
+        local star = UI.label(icon, "Star", "★", UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), 48, C.yellow, true)
+        star.TextScaled = true; star.TextXAlignment = Enum.TextXAlignment.Center
+    end
+    return icon
+end
 return Icons

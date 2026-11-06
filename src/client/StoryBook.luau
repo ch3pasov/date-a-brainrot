@@ -1,6 +1,7 @@
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Collection = require(Shared.Collection)
 local Locations = require(Shared.Locations)
+local Remix = require(Shared.DateRemix)
 local UI = require(script.Parent.UI)
 local Icons = require(script.Parent.ToyIcons)
 local Album = require(script.Parent.Album)
@@ -89,7 +90,8 @@ function Book.mount(parent, character, variant, photo, options)
     local backW = compact and math.max(142, math.ceil(UI.readableSize(17) * 5.5)) or (mobile and 142 or 252)
     local back = UI.button(box, "CloseStory", "← В альбом", UDim2.fromOffset(24, footerY), UDim2.fromOffset(backW, actionH), C.card, options.back)
     back.TextSize = UI.readableSize(17)
-    local again = UI.button(box, "DateAgain", "ЕЩЁ СВИДАНИЕ ♥", UDim2.fromOffset(36 + backW, footerY), UDim2.fromOffset(w - 60 - backW, actionH), C.mint, options.dateAgain)
+    local progress = Remix.progress(photo)
+    local again = UI.button(box, "DateAgain", "РЕМИКСЫ · " .. progress.collected .. "/" .. progress.total, UDim2.fromOffset(36 + backW, footerY), UDim2.fromOffset(w - 60 - backW, actionH), C.mint, options.remixes or options.dateAgain)
     again.TextColor3 = C.panel; again.TextSize = UI.readableSize(17)
     return { frame = box, dispose = function() if viewer then viewer.dispose(); viewer = nil end end }
 end

@@ -50,6 +50,7 @@ local function fixture()
     local canvas = node(nil, "Canvas")
     local icons = {}; for _, key in { "phone", "clock", "photo", "video" } do icons[key] = function(parent) return node(parent, "Icon_" .. key) end end
     local guide = luau.load(guideSource:sub(guideFirst), { environment = {
+        Remix = require("../src/shared/DateRemix"),
         UI = ui, Feedback = f.feedback, Icons = icons, UDim2 = roblox.UDim2,
         Enum = { TextXAlignment = { Center = "center" } },
     }, debugName = "actual guide hierarchy" })()

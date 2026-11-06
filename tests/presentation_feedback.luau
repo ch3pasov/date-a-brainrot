@@ -49,6 +49,7 @@ local function fixture(stage, turn, previous)
     }
     f.controller = luau.load([[
         local session = initial
+        local total = session.total or (session.stage == 2 and 6 or 4)
         local controller = { session = session, buttons = { {}, {}, {}, {} }, updateContent = function() end, setLocked = function() end }
         local alive, reactionState, previewChoice = true, nil, nil
         local dateCollectionState = DateCollection.restore(session, previousCollection)

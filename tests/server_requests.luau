@@ -9,6 +9,7 @@ local Config = require("../src/shared/Config")
 local Catalog = require("../src/shared/Catalog")
 local Games = require("../src/shared/Minigames")
 local Locations = require("../src/shared/Locations")
+local Remix = require("../src/shared/DateRemix")
 local source = fs.readFile("src/server/GameServer.server.luau")
 local function section(firstMarker, lastMarker)
     local first = assert(source:find(firstMarker, 1, true))
@@ -75,7 +76,7 @@ local function fixture()
         }
     ]], { environment = {
         initialProfiles = f.profiles, Logic = Logic, Config = Config, Catalog = Catalog,
-        Games = Games, Locations = Locations, Store = store, request = {},
+        Games = Games, Locations = Locations, Remix = Remix, Store = store, request = {},
         game = { PlaceVersion = 25 }, RunService = { IsStudio = function() return f.studio end },
         os = { clock = function() return f.clock end }, clock = function() return f.wall end,
         workspace = { GetServerTimeNow = function() return f.clock end },
@@ -248,6 +249,68 @@ test("An invalid action can still deliver and save an independently due match wi
     assert(f.profiles[f.a].preferences.soundEnabled == true and #f.events == 1 and #f.delayed == 1)
     assert(f.events[1].result.news[1] == key and f.api.news(f.a)[1] == key)
     f.drain(); assert(f.saves[1].data.matches[key] and f.saves[1].data.revision == revision + 1)
+end)
+local function completedStory(f)
+    local key = f.match(f.a)
+    for stage = 1, 3 do assert(Logic.finishStage(f.profiles[f.a], key, stage, 1, f.wall)) end
+    assert(Logic.recordSelfie(f.profiles[f.a], key, "park", 41, nil, f.wall))
+    return key
+end
+test("Remixes require a completed story and reject forged mode and stage combinations", function()
+    local f = fixture(); local key = f.match(f.a)
+    local before = encoded(f.profiles[f.a])
+    assert(f.invoke(f.a, "startGame", {key=key,practiceStage=3,remixId="long",locationId="cafe"}).error == "story_not_complete")
+    assert(f.invoke(f.a, "startGame", {key=key,remixId="reverse"}).error == "invalid_remix")
+    assert(encoded(f.profiles[f.a]) == before and not f.api.game(f.a))
+    f = fixture(); key = completedStory(f); before = encoded(f.profiles[f.a])
+    for _, args in {
+        {key=key,practiceStage=3,remixId="forged",locationId="cafe"},
+        {key=key,practiceStage=2,remixId="long",locationId="cafe"},
+        {key=key,practiceStage=3,remixId={},locationId="cafe"},
+    } do assert(f.invoke(f.a,"startGame",args).error == "invalid_remix") end
+    assert(encoded(f.profiles[f.a]) == before and not f.api.game(f.a))
+end)
+test("Real server long remix completes six inputs, saves one reward and recovers a lost final reply", function()
+    local f = fixture(); local key = completedStory(f)
+    local view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="rooftop"})
+    assert(view.total == 6 and #view.sequence == 6 and view.remixId == "long" and math.abs(view.revealSeconds - 4.8) < 1e-8)
+    f.drain(); local session = f.api.game(f.a); f.clock += 5
+    local finalArgs
+    for i, choice in session.sequence do
+        local args = {token=view.token,turn=i,choice=choice,total=1,score=1,remixId="reverse"}
+        local result = f.invoke(f.a,"gameInput",args)
+        if i < 6 then
+            assert(result.score == nil and result.total == 6 and result.sequence == nil)
+            assert(f.invoke(f.a,"gameInput",args).resynced and session.step == i+1)
+        else
+            assert(result.result == "remix" and result.unlocked and result.passed and result.score == 1 and result.recap.total == 6)
+            assert(result.locationId == "rooftop" and result.remixId == "long")
+            finalArgs = args
+        end
+    end
+    assert(f.invoke(f.a,"gameInput",finalArgs).error == "expired_game")
+    local snapshot = f.invoke(f.a,"snapshot")
+    assert(snapshot.album[1].remixScores["rooftop:long"] == 1 and snapshot.album[1].locationId == "park")
+    assert(snapshot.album[1].scores["3"] == 1 and snapshot.matches[1].stage == 4)
+    f.drain()
+    assert(f.saves[#f.saves].data.album[key].remixScores["rooftop:long"] == 1)
+    assert(#f.warnings == 0)
+end)
+test("Real server reverse mode uses the opposite order and a cancelled remix grants nothing", function()
+    local f = fixture(); local key = completedStory(f)
+    local view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="reverse",locationId="cafe"})
+    local sequence = table.clone(view.sequence); f.clock += 4
+    for i = 1, 4 do
+        local result = f.invoke(f.a,"gameInput",{token=view.token,turn=i,choice=sequence[5-i]})
+        assert(result.good)
+        if i == 4 then assert(result.unlocked and result.score == 1) end
+    end
+    view = f.invoke(f.a,"startGame",{key=key,practiceStage=3,remixId="long",locationId="park"})
+    f.clock += 5
+    assert(f.invoke(f.a,"gameInput",{token=view.token,turn=1,choice=view.sequence[1]}).good)
+    assert(not f.invoke(f.a,"cancelGame").error and not f.api.game(f.a))
+    assert(f.profiles[f.a].album[key].remixScores["park:long"] == nil)
+    assert(Remix.progress(f.profiles[f.a].album[key]).collected == 1)
 end)
 local passed = 0; for _, record in tests do if record.passed then passed += 1 end end
 fs.writeFile("prototype/evidence/server-request-tests.json", serde.encode("json", { passed = passed, failed = #tests - passed,

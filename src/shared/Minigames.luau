@@ -1,4 +1,5 @@
 local Games = {}
+local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
 local Locations
 if script then Locations = require(script.Parent.Locations) else Locations = require("./Locations") end
 Games.stageNames = { "Переписка", "Видеозвонок", "Свидание", "В альбоме" }
@@ -174,13 +175,13 @@ function Games.applyInput(session, args, now)
         response = Games.reaction(session.personality, good, session.attempts)
         if session.attempts >= 6 then score = session.correct / 6 end
     else
-        if now.clock - session.started < 3 then return { error = "memorize_first" } end
-        good = index == session.sequence[session.step]
+        if now.clock - session.started < (session.revealSeconds or 3) then return { error = "memorize_first" } end
+        good = index == Remix.answer(session.sequence, session.remixId, session.step)
         table.insert(session.choices, index); table.insert(session.hits, good)
         if good then session.correct += 1 end
         session.step += 1
         response = Games.dateReaction(session.personality, good)
-        if session.step > 4 then score = session.correct / 4 end
+        if session.step > #session.sequence then score = session.correct / #session.sequence end
     end
     return { good = good, response = response, score = score }
 end

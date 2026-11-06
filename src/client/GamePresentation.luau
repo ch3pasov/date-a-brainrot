@@ -3,6 +3,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Locations = require(Shared.Locations)
 local DateReveal = require(Shared.DateReveal)
 local DateCollection = require(Shared.DateCollection)
+local Remix = require(Shared.DateRemix)
 local PresentationLayout = require(Shared.PresentationLayout)
 local UI = require(script.Parent.UI)
 local Scene = require(script.Parent.SceneViewer)
@@ -16,6 +17,8 @@ end
 Presentation.gestureIcon = Icons.gesture
 function Presentation.mount(body, session, character, variant, options)
     local mobile, w, h = options.mobile, options.width, options.height
+    local total = session.total or (session.stage == 2 and 6 or 4)
+    local remix = Remix.get(session.remixId)
     local layout = PresentationLayout.resolve(w, h, mobile, UI.touchMinimum)
     local alive = true
     local controller = { session = session, locked = false, revealing = false, buttons = {}, scenes = {}, connections = {} }
@@ -50,7 +53,7 @@ function Presentation.mount(body, session, character, variant, options)
         if not roundDots then return end
         local completed = session.stage == 2 and controller.session.attempts or controller.session.step - 1
         local hasConfirmation = type(confirmedHit) == "boolean"
-        for i = 1, session.stage == 2 and 6 or 4 do
+        for i = 1, total do
             local slot = roundDots:FindFirstChild("Round" .. i)
             local label = slot.Mark
             local hit = controller.session.hits and controller.session.hits[i]
@@ -164,11 +167,12 @@ function Presentation.mount(body, session, character, variant, options)
         local art = UI.frame(root, "DateWorld", UDim2.fromOffset(immersive and 0 or 12, immersive and 0 or 47), UDim2.fromOffset(artW, artH), C.card, immersive and 0 or 20)
         dateScene = addScene(art, character, variant, {
             locationId = location.id, pair = true, interactive = true, radius = immersive and 0 or 18,
+            dateTotal = total,
             itemLayout = { width = artW, height = artH, targetWidth = math.max(112, UI.touchMinimum or 0), targetHeight = math.max(immersive and 132 or 90, UI.touchMinimum or 0) },
         })
         local dateHeader = PresentationLayout.dateHeader(w, mobile, UI.touchMinimum, UI.readableSize(mobile and 21 or 30))
         if immersive then
-            local title = UI.label(art, "PicnicTitle", mobile and style.mobileTitle or style.title, UDim2.fromOffset(dateHeader.titleX, dateHeader.titleY), UDim2.fromOffset(dateHeader.titleWidth, dateHeader.titleHeight), UI.readableSize(mobile and 21 or 30), style.cream, true)
+            local title = UI.label(art, "PicnicTitle", remix and string.upper(remix.name) or (mobile and style.mobileTitle or style.title), UDim2.fromOffset(dateHeader.titleX, dateHeader.titleY), UDim2.fromOffset(dateHeader.titleWidth, dateHeader.titleHeight), UI.readableSize(mobile and 21 or 30), style.cream, true)
             title.Font = Enum.Font.GothamBlack; title.TextStrokeColor3 = style.ink; title.TextStrokeTransparency = .1
         end
         counter = centered(root, "DateCounter", "", immersive and UDim2.new(1, -100, 1, -52) or UDim2.new(1, -115, 0, 8), UDim2.fromOffset(80, 28), 14, immersive and style.ink or C.muted, true)
@@ -192,7 +196,8 @@ function Presentation.mount(body, session, character, variant, options)
             if not alive or art.AbsoluteSize.X <= 0 then return end
             for i, button in controller.buttons do local p = dateScene.project(i); button.Position = UDim2.fromScale(p.X, p.Y) end
         end))
-        roundDots = dots(root, 4, h - (immersive and 48 or 33))
+        roundDots = dots(root, total, h - (immersive and 48 or 33))
+        local turnPrompt = remix and remix.cue or "Теперь твой ход"
         local function showReveal()
             local cue = DateReveal.current(revealState)
             root:SetAttribute("RevealPhase", cue.phase); root:SetAttribute("RevealIndex", cue.index); root:SetAttribute("RevealTotal", cue.total)
@@ -210,11 +215,11 @@ function Presentation.mount(body, session, character, variant, options)
                     outline.Transparency = selected and 0 or .1
                 end
             end
-            prompt.Text = cue.finished and "Теперь твой ход" or ("Запоминай · " .. cue.index .. "/" .. cue.total)
+            prompt.Text = cue.finished and turnPrompt or ("Запоминай · " .. cue.index .. "/" .. cue.total .. (session.remixId == "reverse" and " · потом наоборот" or ""))
         end
         controller.updateContent = function(nextSession)
-            counter.Text = tostring(nextSession.step) .. " / 4"
-            if revealState and controller.revealing then showReveal() else prompt.Text = "Теперь твой ход" end
+            counter.Text = tostring(nextSession.step) .. " / " .. total
+            if revealState and controller.revealing then showReveal() else prompt.Text = turnPrompt end
             dateCollectionState = DateCollection.restore(nextSession, dateCollectionState)
             dateScene.setCollected(dateCollectionState)
             updateDots()

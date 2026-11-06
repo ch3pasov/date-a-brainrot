@@ -4,6 +4,7 @@ local Config
 local Catalog
 local Locations
 local Preferences
+local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
 if script then
     Config = require(script.Parent.Config)
     Catalog = require(script.Parent.Catalog)
@@ -93,6 +94,7 @@ function Logic.validSavedProfile(data)
                     if entry.locationId ~= nil and not Locations.valid(entry.locationId) then return false end
                     if entry.selfieAt ~= nil and not finite(entry.selfieAt) then return false end
                     if not validVisitedLocations(entry.visitedLocations) then return false end
+                    if not Remix.validScores(entry.remixScores) then return false end
                     if entry.avatarUserId ~= nil and (not finite(entry.avatarUserId) or entry.avatarUserId % 1 ~= 0) then return false end
                     if entry.avatarSnapshot ~= nil and (type(entry.avatarSnapshot) ~= "string" or #entry.avatarSnapshot > 64000) then return false end
                 end
@@ -230,6 +232,22 @@ function Logic.recordSelfie(profile, key, locationId, userId, avatarSnapshot, no
     profile.revision += 1
     return true
 end
+function Logic.finishRemix(profile, key, locationId, remixId, score)
+    local match, photo = profile.matches[key], profile.album[key]
+    if not match or match.stage ~= 4 or not photo then return false, "story_not_complete" end
+    if not Locations.valid(locationId) then return false, "invalid_location" end
+    if not Remix.get(remixId) then return false, "invalid_remix" end
+    if not finite(score) or score < 0 or score > 1 then return false, "invalid_score" end
+    local stamp = Remix.key(locationId, remixId)
+    local previous = photo.remixScores and photo.remixScores[stamp] or 0
+    local passed = Remix.passed(remixId, score)
+    if score > previous then
+        photo.remixScores = photo.remixScores or {}
+        photo.remixScores[stamp] = score; profile.revision += 1
+    end
+    return true, { passed = passed, best = math.max(score, previous), improved = score > previous,
+        unlocked = passed and not Remix.passed(remixId, previous) }
+end
 function Logic.publicSnapshot(profile, now)
     local pending, unanswered, swipes, sentLikes = 0, 0, {}, {}
     for key, s in profile.swipes do
@@ -245,6 +263,7 @@ function Logic.publicSnapshot(profile, now)
     for _, a in profile.album do
         local photo = table.clone(a)
         photo.visitedLocations = visitedLocations(a)
+        photo.remixScores = table.clone(a.remixScores or {})
         table.insert(album, photo)
     end
     local function matchPriority(match)
