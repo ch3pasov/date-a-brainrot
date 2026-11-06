@@ -432,8 +432,28 @@ local function renderFeed()
     end
     local character, variant = Logic.character(currentCard.characterId), Logic.variant(currentCard.variantId)
     local rarity = Config.Rarities[character.rarity]
-    local feedLayout = FeedLayout.resolve(width, height, mobile, UI.touchMinimum)
+    local baseLayout=FeedLayout.resolve(width,height,mobile,UI.touchMinimum,{availableWidth=UI.availableWidth})
+    local nameFont=UI.readableSize(#character.name>27 and 20 or 25)
+    local bioFont=UI.readableSize(mobile and 16 or 15)
+    local variantFont=UI.readableSize(13,10)
+    local badgeFont=UI.readableSize(12,10)
+    local nameH=UI.textHeight(character.name,nameFont,baseLayout.cardWidth-36,true)
+    local bioH=UI.textHeight(character.bio,bioFont,baseLayout.cardWidth-36,false)
+    local rarityW=math.min(200,math.floor((baseLayout.cardWidth-50)*.4))
+    local chanceW=math.min(340,baseLayout.cardWidth-50-rarityW)
+    local chanceText=("ВЗАИМНОСТЬ %d%%"):format(math.floor(Logic.chance(character.id,variant.id)*100+.5))
+    local badgeH=math.max(28,UI.textHeight(rarity.label,badgeFont,rarityW-14,true)+8,UI.textHeight(chanceText,badgeFont,chanceW-14,true)+8)
+    local variantH=0
+    for _,label in {"База","Золото","Неон","Космос"}do variantH=math.max(variantH,UI.textHeight(label,variantFont,baseLayout.variantWidth-12,true)+12)end
+    local feedLayout=FeedLayout.resolve(width,height,mobile,UI.touchMinimum,{availableWidth=UI.availableWidth,
+        captionHeight=nameH+bioH+18,badgeHeight=badgeH,variantHeight=variantH,figureHeight=math.max(160,math.ceil(80/(UI.scale or 1)))})
     local cardW, cardH = feedLayout.cardWidth, feedLayout.cardHeight
+    if mobile then
+        body.Position=UDim2.fromOffset((width-cardW)/2,feedLayout.bodyY)
+        body.Size=UDim2.fromOffset(cardW,feedLayout.bodyHeight)
+        body.ScrollingEnabled=feedLayout.scrollable;body.ScrollBarThickness=feedLayout.scrollable and 3 or 0
+        body.ClipsDescendants=feedLayout.scrollable
+    end
     local x = 0
     local backCard = UI.frame(body, "NextCardStack", UDim2.fromOffset(12, 13), UDim2.fromOffset(cardW - 24, cardH - 12), C.card, 24)
     backCard.Rotation = 2
@@ -446,7 +466,7 @@ local function renderFeed()
     local figureArt = art
     if feedLayout.variantRows > 1 then
         local top = 18 + feedLayout.variantRows * (feedLayout.variantHeight + 6)
-        figureArt = UI.frame(art, "CompactFigureStage", UDim2.fromOffset(0, top), UDim2.new(1, 0, 1, -top - 42), C.aqua, 0)
+        figureArt = UI.frame(art, "CompactFigureStage", UDim2.fromOffset(0, top), UDim2.new(1, 0, 1, -top - badgeH-14), C.aqua, 0)
     end
     local view = mount(figureArt, character.id, variant.id, { scene = true, locationId = Locations.forPersonality(character.personality), loadingTop = feedLayout.variantRows == 1 and feedLayout.variantHeight + 22 or 10 })
     local tapGesture = ({ music = "dance", humor = "dance", food = "heart", art = "heart" })[character.personality] or "wave"
@@ -456,18 +476,22 @@ local function renderFeed()
     local tapCue = Presentation.gestureIcon(figureArt, tapGesture, UDim2.new(.5, -24, 0, tapCueY), UDim2.fromOffset(48, 48))
     tapCue.Name = "CharacterTapCue"; tapCue.ZIndex = 4; tapCue.Visible = false
     local tapCueVersion = 0
-    cardStamp = UI.label(art, "SwipeStamp", "НРАВИТСЯ ♥", UDim2.fromOffset(20, 76), UDim2.new(1, -40, 0, 68), 34, C.mint, true)
+    local stampFont=UI.readableSize(34)
+    local stampH=math.max(68,UI.textHeight("НРАВИТСЯ ♥",stampFont,cardW-56,true)+8)
+    cardStamp = UI.label(art, "SwipeStamp", "НРАВИТСЯ ♥", UDim2.fromOffset(20, 18+feedLayout.variantRows*(feedLayout.variantHeight+6)), UDim2.new(1, -40, 0, stampH), stampFont, C.mint, true)
     cardStamp.TextTransparency = 1; cardStamp.TextXAlignment = Enum.TextXAlignment.Center; cardStamp.Rotation = -8; cardStamp.ZIndex = 4
-    UI.pill(art, "Rarity", rarity.label, UDim2.new(0, 12, 1, -38), 124, UI.rgb(rarity.color))
-    UI.pill(art, "Chance", ("ВЗАИМНОСТЬ %d%%"):format(math.floor(Logic.chance(character.id, variant.id) * 100 + .5)), UDim2.new(1, -202, 1, -38), 190, C.yellow)
-    UI.label(card, "CharacterName", character.name, UDim2.fromOffset(18, artH + 3), UDim2.new(1, -36, 0, 39), #character.name > 27 and 20 or 25, C.ink, true)
-    UI.label(card, "Bio", character.bio, UDim2.fromOffset(18, artH + 43), UDim2.new(1, -36, 0, 40), mobile and 16 or 15, C.muted)
+    local rarityBadge=UI.pill(art,"Rarity",rarity.label,UDim2.new(0,12,1,-badgeH-8),rarityW,UI.rgb(rarity.color))
+    rarityBadge.Size=UDim2.fromOffset(rarityW,badgeH);rarityBadge.Label.TextSize=badgeFont
+    local chanceBadge=UI.pill(art,"Chance",chanceText,UDim2.new(1,-chanceW-12,1,-badgeH-8),chanceW,C.yellow)
+    chanceBadge.Size=UDim2.fromOffset(chanceW,badgeH);chanceBadge.Label.TextSize=badgeFont
+    UI.label(card,"CharacterName",character.name,UDim2.fromOffset(18,artH+4),UDim2.new(1,-36,0,nameH),nameFont,C.ink,true)
+    UI.label(card,"Bio",character.bio,UDim2.fromOffset(18,artH+nameH+10),UDim2.new(1,-36,0,bioH),bioFont,C.muted)
     for i, v in Config.Variants do
         local variantWidth = feedLayout.variantWidth
         local selected = variant.id == v.id
         local column, row = (i - 1) % feedLayout.variantColumns, math.floor((i - 1) / feedLayout.variantColumns)
         local b = UI.button(art, "Variant_" .. v.id, ({ "База", "Золото", "Неон", "Космос" })[i], UDim2.fromOffset(12 + column * (variantWidth + 6), 12 + row * (feedLayout.variantHeight + 6)), UDim2.fromOffset(variantWidth, feedLayout.variantHeight), selected and C.yellow or C.panel, function() setCardVariant(v.id) end)
-        b.TextSize = 13
+        b.TextSize = variantFont;b.TextWrapped=true
         b.ZIndex = 4
         if selected then b.Rotation = -2; UI.stroke(b, C.ink).Thickness = 3 end
     end
@@ -479,8 +503,8 @@ local function renderFeed()
     end
     local actionW = mobile and feedLayout.actionWidth or (cardW - 60) / 2
     local pass = UI.button(controls, "Pass", "×   МИМО", UDim2.fromOffset(mobile and 0 or 24, actionY), UDim2.fromOffset(actionW, feedLayout.actionHeight), C.panel, function() swipe(false) end)
-    pass.TextSize = mobile and 24 or 22
-    local like = UI.button(controls, "Like", "♥   ЛАЙК", UDim2.fromOffset(mobile and feedLayout.likeX or cardW / 2 + 6, actionY), UDim2.fromOffset(actionW, feedLayout.actionHeight), C.pink, function() swipe(true) end); like.TextColor3 = C.panel; like.TextSize = mobile and 24 or 22
+    pass.TextSize = UI.readableSize(mobile and 24 or 22);pass.TextWrapped=true
+    local like = UI.button(controls, "Like", "♥   ЛАЙК", UDim2.fromOffset(mobile and feedLayout.likeX or cardW / 2 + 6, actionY), UDim2.fromOffset(actionW, feedLayout.actionHeight), C.pink, function() swipe(true) end); like.TextColor3 = C.panel; like.TextSize = pass.TextSize;like.TextWrapped=true
     if mobile then
         local undo = UI.button(controls, "UndoPass", "←", UDim2.fromOffset(feedLayout.undoX, 0), UDim2.fromOffset(feedLayout.undoWidth, feedLayout.actionHeight), C.yellow, actions.undoPass)
         undo.TextSize = 31; undo.Active = state.lastPass ~= nil; undo.Selectable = undo.Active; undo.TextTransparency = undo.Active and 0 or .55
@@ -1015,7 +1039,7 @@ local function updateScale()
     UI.scale = layout.scale; UI.textBucket = textBucket; UI.availableWidth = availableWidth
     canvas.Size = UDim2.fromOffset(width, height)
     scale.Scale = layout.scale
-    if (layoutChanged or heightChanged or touchChanged or textChanged or ((modal or (activeGame and activeGame.stage==2)) and modalWidthChanged)) and header then render(true) end
+    if (layoutChanged or heightChanged or touchChanged or textChanged or ((modal or (activeGame and activeGame.stage==2) or (activeTab=="feed" and not activeGame)) and modalWidthChanged)) and header then render(true) end
 end
 workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
 workspace.CurrentCamera.CFrame = CFrame.new(0, 10, 20)

@@ -84,7 +84,7 @@ test("The real tap cue stays inside the figure area and clear of variant control
                 width = size.X.Scale * parent.width + size.X.Offset,
                 height = size.Y.Scale * parent.height + size.Y.Offset }
         end
-        local env = { art = art, feedLayout = feed, UDim2 = UDim2, C = { aqua = {} },
+        local env = { art = art, feedLayout = feed, badgeH=28, UDim2 = UDim2, C = { aqua = {} },
             character = { id = "test", personality = "food" }, variant = { id = "classic" },
             Locations = { forPersonality = function() return "park" end },
             mount = function() return {} end,

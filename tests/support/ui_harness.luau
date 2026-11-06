@@ -20,7 +20,10 @@ function Harness.new(width, height)
             fields.Parent=nil;fields.destroyed=true
         end
         object = setmetatable({}, {
-            __index = function(_, key) return fields[key] or fields.children[key] end,
+            __index = function(_, key)
+                if fields[key]~=nil then return fields[key] end
+                return fields.children[key]
+            end,
             __newindex = function(_, key, value)
                 fields[key] = value
                 if key == "Parent" and value then value.children[fields.Name] = object end

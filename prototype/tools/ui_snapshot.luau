@@ -2,6 +2,7 @@
 -- Run from repository root: lune run prototype/tools/ui_snapshot.luau /tmp/ui.json
 local Harness=require("../../tests/support/ui_harness")
 local Call=require("../../tests/support/call_harness")
+local Feed=require("../../tests/support/feed_harness")
 local Logic=require("../../src/shared/GameLogic")
 local Catalog=require("../../src/shared/Catalog")
 local Collection=require("../../src/shared/Collection")
@@ -44,7 +45,9 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="call" or kind=="call_miss" then
+    if kind=="feed"then
+        box=Feed.mount(h,character,Config.Variants[1],{sceneMount=options.mount,lastPass={}}).frame
+    elseif kind=="call" or kind=="call_miss" then
         local call,_,top=Call.mount(h,character,{token="preview",stage=2,attempts=0,hits={},gesture=2},{sceneMount=options.mount})
         box=call.root;box.Position=h.environment.UDim2.new(.5,-box.Size.X.Offset/2,0,top)
         if kind=="call_miss"then call.react(3,false)end
@@ -77,7 +80,7 @@ local function snapshot(kind,width,height,scrolled)
         local x=(pos and pos.X.Scale*pw+pos.X.Offset or 0)-(anchor and anchor.X*w or 0)
         local y=(pos and pos.Y.Scale*ph+pos.Y.Offset or 0)-(anchor and anchor.Y*hh or 0)
         local out={name=node.Name,class=node.ClassName,x=x,y=y,w=w,h=hh,rotation=node.Rotation or 0,
-            background=color(node.BackgroundColor3),alpha=1-(node.BackgroundTransparency or 0),text=node.Text,font=node.Font,
+            background=color(node.BackgroundColor3),alpha=1-(node.BackgroundTransparency or 0),text=(node.TextTransparency or 0)<1 and node.Text or nil,font=node.Font,
             fontSize=node.TextSize,textColor=color(node.TextColor3),align=node.TextXAlignment or "center",wrapped=node.TextWrapped==true,children={}}
         local corner=node.children.UICorner
         if corner then out.radius=corner.CornerRadius.Scale*math.min(w,hh)+corner.CornerRadius.Offset end
@@ -104,7 +107,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end

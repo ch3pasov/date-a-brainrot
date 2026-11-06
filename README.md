@@ -80,7 +80,11 @@ Successful remixes offer the next missing souvenir and name its venue and mode.
 The completed set leads to a preview of its earned photo frame. Failed attempts
 still offer the same round, and the collection keeps every replay accessible.
 
-419 offline checks and both source builds pass. The full-catalog simulation covers
+Swipe cards fit measured names, bios, variants and chance badges at readable sizes.
+Compact windows use their available width and scroll the card while the main
+choices remain below it. Match probabilities and decisions are unchanged.
+
+421 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
