@@ -1,8 +1,13 @@
 # Supplying character art locally
 
 The public asset XML contains only folders, with no mesh, texture, animation,
-image, or external asset reference. A build succeeds with that container, but
-character viewports do not show a character until models are supplied.
+image, or external asset reference. With that container, the client creates
+original toy stand-ins from plain Parts. Each personality has its own accessories;
+variant colors and date/photo gestures work without external character art.
+
+Supplying a valid Model replaces its stand-in automatically. The fallback handles
+missing models or a non-Model template; it does not replace an existing model
+after a remote mesh/texture permission or loading failure.
 
 The game expects `ReplicatedStorage.BrainrotAssets` to contain:
 

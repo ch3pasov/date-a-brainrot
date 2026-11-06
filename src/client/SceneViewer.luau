@@ -6,6 +6,7 @@ local Locations = require(ReplicatedStorage:WaitForChild("Shared").Locations)
 local DateCollection = require(ReplicatedStorage.Shared.DateCollection)
 local DateItemLayout = require(ReplicatedStorage.Shared.DateItemLayout)
 local PhotoStyle = require(ReplicatedStorage.Shared.PhotoStyle)
+local FallbackFigure = require(script.Parent.FallbackFigure)
 local Figure = require(script.Parent.PlayerFigure)
 local Feedback = require(script.Parent.Feedback)
 local PicnicPark = require(script.Parent.PicnicPark)
@@ -137,9 +138,11 @@ function Scene.mount(parent, character, variant, options)
     local loadingLabel
     local arms = {}
     if character and not options.onlyPlayer then
-        local original = assets.Models:FindFirstChild(character.modelName)
-        if original then
-            model = original:Clone(); model.Name = "BrainrotFigure"
+        local fallback
+        model,fallback = FallbackFigure.obtain(assets.Models,character,variant)
+        if model then
+            model.Name = "BrainrotFigure"
+            viewport:SetAttribute("FallbackCharacter",fallback)
             local _, dimensions = visibleBounds(model)
             local scaleFactor = math.min((pair and 5.15 or 5.7) / math.max(dimensions.Y, .1), (pair and 6 or 8.5) / math.max(dimensions.X, .1))
             model:ScaleTo(model:GetScale() * scaleFactor)
@@ -154,6 +157,8 @@ function Scene.mount(parent, character, variant, options)
                     if side then arms[side] = object; object.Transform = CFrame.Angles(0, 0, side == "Arm.L" and -1.15 or 1.15) end
                 elseif object:IsA("BasePart") then
                     object.Anchored = true; object.CanCollide = false; object.CanTouch = false; object.CanQuery = false
+                    local side=fallback and object:GetAttribute("ToyArm")
+                    if side then arms[side]={part=object,rest=model:GetPivot():Inverse()*object.CFrame} end
                     if variant and variant.id ~= "classic" and object:IsA("MeshPart") then
                         object.Color = variant.id == "gold" and Color3.fromRGB(243, 183, 63) or variant.id == "neon" and Color3.fromRGB(92, 222, 183) or Color3.fromRGB(129, 103, 226)
                         object.Material = variant.id == "gold" and Enum.Material.Metal or Enum.Material.SmoothPlastic
@@ -163,8 +168,8 @@ function Scene.mount(parent, character, variant, options)
             npcBase = CFrame.new(pair and 1.8 or 0, 0, options.photo and .2 or -.3) * CFrame.Angles(0, pair and -.12 or 0, 0) * model:GetPivot()
             model:PivotTo(npcBase); model.Parent = world
             npcShadow = part(world, "FigureShadow", Vector3.new(.025, math.clamp(size.X * .6, 1.2, 4.5), math.clamp(size.Z * .8, 1, 2.5)), Vector3.new(pair and 1.8 or 0, .015, options.photo and .2 or -.3), rgb(location.ground):Lerp(Color3.fromRGB(75, 65, 84), .5), Enum.PartType.Cylinder, CFrame.Angles(0, 0, math.pi / 2)); npcShadow.Transparency = .6
-            viewport:SetAttribute("SceneAssetsReady", loaded[character.id] == true)
-            if not loaded[character.id] then
+            viewport:SetAttribute("SceneAssetsReady", fallback or loaded[character.id] == true)
+            if not fallback and not loaded[character.id] then
                 for i = 1, 3 do loadingDots[i] = ball(world, "LoadingDot", .22, Vector3.new((pair and 1.8 or 0) + (i - 2) * .45, 2.2, 0), Color3.fromRGB(171, 158, 205)) end
                 loadingLabel = Instance.new("TextLabel"); loadingLabel.Name = "SceneLoading"; loadingLabel.Size = UDim2.new(1, -20, 0, 24); loadingLabel.Position = UDim2.new(0, 10, 1, -29)
                 loadingLabel.BackgroundTransparency = 1; loadingLabel.Text = "Загружаем фигурку…"; loadingLabel.TextColor3 = Color3.fromRGB(103, 98, 120); loadingLabel.TextSize = 13; loadingLabel.Font = Enum.Font.Gotham; loadingLabel.Parent = viewport
@@ -343,7 +348,11 @@ function Scene.mount(parent, character, variant, options)
             if gesture == "wave" and not left then roll = .7 + math.sin(phase * 7) * .18
             elseif gesture == "heart" then roll = left and -.55 or .55; pitch = -.85
             elseif gesture == "dance" then roll = (left and -1 or 1) * (.75 + math.sin(phase * 5) * .35) end
-            bone.Transform = CFrame.Angles(pitch, 0, roll)
+            if type(bone)=="table" and bone.part then
+                local half=bone.part.Size.Y/2
+                bone.part.CFrame=model:GetPivot()*bone.rest*CFrame.new(0,half,0)
+                    *FallbackFigure.armTransform(name,gesture,phase)*CFrame.new(0,-half,0)
+            else bone.Transform = CFrame.Angles(pitch, 0, roll) end
         end
         local bob = gesture == "dance" and math.abs(math.sin(phase * 5)) * .35 or math.sin(phase * 1.2) * .03
         local tilt = gesture == "wave" and math.sin(phase * 6) * .1 or gesture == "dance" and math.sin(phase * 5) * .1 or 0

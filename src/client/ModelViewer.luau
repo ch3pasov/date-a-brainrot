@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ContentProvider = game:GetService("ContentProvider")
 local Feedback = require(script.Parent.Feedback)
+local FallbackFigure = require(script.Parent.FallbackFigure)
 local assets = ReplicatedStorage:WaitForChild("BrainrotAssets")
 local Viewer = {}
 local registered = {}
@@ -13,12 +14,8 @@ function Viewer.mount(parent, character, variant, options)
     viewport.Ambient = Color3.fromRGB(180, 180, 205); viewport.LightColor = Color3.fromRGB(245, 240, 255); viewport.LightDirection = Vector3.new(-1, -1, -1)
     viewport.Parent = parent
     local world = Instance.new("WorldModel"); world.Parent = viewport
-    local original = assets.Models:FindFirstChild(character.modelName)
-    if not original then
-        warn("Prepared model not found: " .. character.modelName)
-        return { dispose = function() viewport:Destroy() end, greet = function() end }
-    end
-    local model = original:Clone()
+    local model,fallback = FallbackFigure.obtain(assets.Models,character,variant)
+    viewport:SetAttribute("FallbackCharacter",fallback)
     local center, size = model:GetBoundingBox()
     model:PivotTo(CFrame.new(-center.Position.X, -center.Position.Y + size.Y / 2, -center.Position.Z) * model:GetPivot())
     model.Parent = world
@@ -71,7 +68,7 @@ function Viewer.mount(parent, character, variant, options)
     if tracks.idle then tracks.idle:Play(0.15) end
     local alive = true
     local greetSerial = 0
-    if not loaded[character.id] then
+    if not fallback and not loaded[character.id] then
         local loading = Instance.new("TextLabel"); loading.Name = "Loading"; loading.Size = UDim2.new(1,-20,0,30); loading.Position = UDim2.new(0,10,1,-34)
         loading.BackgroundTransparency = 1; loading.Text = "Загружаем…"; loading.TextScaled = true; loading.Font = Enum.Font.Gotham; loading.TextColor3 = Color3.fromRGB(103,98,120); loading.Parent = viewport
         local textLimit = Instance.new("UITextSizeConstraint"); textLimit.MinTextSize = 9; textLimit.MaxTextSize = 13; textLimit.Parent = loading
