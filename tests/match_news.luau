@@ -34,11 +34,12 @@ local function fixture()
             return { frame = {} }
         end },
         Feedback = { play = function() f.sounds += 1 end, pop = function() f.pops += 1 end, burst = function() f.bursts += 1 end },
-        task = { spawn = function(action) table.insert(f.queued, action) end, wait = function() end },
+        task = { spawn = function(action) table.insert(f.queued, action) end, wait = function() coroutine.yield() end },
         toast = function() f.toasts += 1 end,
     }
     f.client = luau.load([[
         local modal, modalViewer, modalRebuild, restoringModal, showReturn
+        local windowFocused,robloxMenuOpen,toastFrame=true,false,nil
         local function closeModal() modal = nil end
     ]] .. clientSource:sub(notifyFirst, notifyLast - 1) .. "\n"
         .. clientSource:sub(showFirst, showLast - 1) .. [[
@@ -46,6 +47,7 @@ local function fixture()
             show = showReturn, notify = notifyMatches,
             dismiss = closeModal,
             rebuild = function() restoringModal = true; modalRebuild(); restoringModal = false end,
+            visibility=function(focused,menu,toast)windowFocused=focused;robloxMenuOpen=menu;toastFrame=toast end,
         }
     ]], { environment = environment, debugName = "actual match letter delivery" })()
     return f
@@ -87,6 +89,17 @@ test("Online notification duplicates and already shown return news never toast t
     assert(#f.queued == 1); f.queued[1](); assert(f.toasts == 1)
     f.client.notify({ "online" }); assert(#f.queued == 1)
     f.client.show({ "online" }); assert(#f.letters == 1)
+end)
+test("Match news waits through overlapping visibility blockers and existing notifications",function()
+    local f=fixture();f.client.visibility(false,true,{})
+    f.client.notify({"first"});local worker=coroutine.create(f.queued[1])
+    assert(coroutine.resume(worker));assert(f.toasts==0)
+    f.client.notify({"second"});assert(#f.queued==1)
+    f.client.visibility(true,true,{});assert(coroutine.resume(worker));assert(f.toasts==0)
+    f.client.visibility(true,false,{});assert(coroutine.resume(worker));assert(f.toasts==0)
+    f.client.visibility(true,false,nil);assert(coroutine.resume(worker))
+    assert(f.toasts==1 and coroutine.status(worker)=="dead")
+    f.client.notify({"first","second"});assert(#f.queued==1)
 end)
 
 local function serverFixture(profile)

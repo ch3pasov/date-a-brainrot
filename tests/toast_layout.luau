@@ -9,6 +9,8 @@ local Feed = require("../src/shared/FeedLayout")
 local source = fs.readFile("src/client/App.client.luau")
 local first = assert(source:find("local function toast(text, color)", 1, true))
 local last = assert(source:find("\nlocal pendingMatchNews, notificationScheduled", first, true))
+local bindingFirst=assert(source:find("local windowFocused, robloxMenuOpen",1,true))
+local bindingLast=assert(source:find('local backdrop = UI.new("ScreenGui"',bindingFirst,true))
 local uiSource = fs.readFile("src/client/UI.luau")
 local readableFirst = assert(uiSource:find("function UI.readableSize(", 1, true))
 local readableLast = assert(uiSource:find("\nfunction UI.clear(", readableFirst, true))
@@ -19,25 +21,41 @@ local function test(name, fn)
     assert(ok, name .. ": " .. tostring(err))
 end
 local function fixture(w, h, tab, failedMeasure)
-    local f = { frames = {}, timers = {} }
+    local f = { frames = {}, timers = {}, refreshes=0 }
+    local function signal()
+        local s={}
+        function s:Connect(callback)self.callback=callback end
+        function s:fire()self.callback()end
+        return s
+    end
+    f.input={WindowFocused=signal(),WindowFocusReleased=signal()}
+    f.gui={MenuIsOpen=false,MenuOpened=signal(),MenuClosed=signal()}
     local logical = Screen.resolve(w, h - 58, true)
     f.logical = logical
     local ui = { scale = logical.scale, touchMinimum = logical.touchMinimum }
     luau.load(uiSource:sub(readableFirst, readableLast - 1), { environment = { UI = ui } })()
     function ui.frame(_, name, position, size)
-        local frame = { Name = name, Position = position, Size = size }
-        function frame:Destroy() self.destroyed = true end
+        local frame = { Name = name, Position = position, Size = size, Parent=true }
+        function frame:Destroy() self.destroyed = true;self.Parent=nil end
         table.insert(f.frames, frame); return frame
     end
     function ui.label(parent, _, text, position, size, font)
         local label = { Text = text, Position = position, Size = size, TextSize = font }
         parent.message = label; return label
     end
-    local client = luau.load("local toastFrame\n" .. source:sub(first, last - 1) .. "\nreturn toast", { environment = {
+    local client = luau.load("local toastFrame\nlocal visibilityEpoch=0\nlocal rotationRequired=false\n"
+        ..source:sub(bindingFirst,bindingLast-1)..source:sub(first,last-1)
+        .."\nreturn {show=toast,paused=revealIsPaused,rotate=function(value)rotationRequired=value end}", { environment = {
         UI = ui, FeedLayout = Feed, C = {}, canvas = {}, UDim2 = roblox.UDim2, Vector2 = roblox.Vector2,
+        UserInputService=f.input,GuiService=f.gui,
+        gamePresentation={refreshRevealPause=function()f.refreshes+=1 end},
         Enum = { Font = { GothamBlack = "bold" } },
         width = logical.width, height = logical.height, mobile = logical.mobile, activeTab = tab or "feed",
-        task = { delay = function(_, action) table.insert(f.timers, action) end },
+        RunService={Heartbeat={Connect=function(_,callback)
+            local connection={callback=callback,connected=true}
+            function connection:Disconnect()self.connected=false end
+            table.insert(f.timers,connection);return connection
+        end}},
         TextService = { GetTextSize = function(_, _, font, style, size)
             assert(style == "bold" and size.X == (logical.mobile and 436 or 480) - 32)
             if failedMeasure then error("measurement unavailable") end
@@ -45,7 +63,11 @@ local function fixture(w, h, tab, failedMeasure)
             return roblox.Vector2.new(100, f.measured)
         end },
     } })()
-    f.show = client; return f
+    f.show=client.show;f.client=client
+    function f.tick(delta)
+        for _,connection in f.timers do if connection.connected then connection.callback(delta or .1)end end
+    end
+    return f
 end
 test("Long notifications retain readable text and leave swipe/navigation actions clear", function()
     for _, screen in { {280, 320}, {320, 370}, {320, 480}, {390, 650}, {1280, 720} } do
@@ -74,8 +96,32 @@ test("An old notification timer cannot destroy its replacement", function()
     local f = fixture(390, 650)
     f.show("First"); f.show("Second")
     assert(f.frames[1].destroyed and not f.frames[2].destroyed)
-    f.timers[1](); assert(not f.frames[2].destroyed)
-    f.timers[2](); assert(f.frames[2].destroyed)
+    f.timers[1].callback(10); assert(not f.frames[2].destroyed and not f.timers[1].connected)
+    for _=1,34 do f.tick()end
+    assert(f.frames[2].destroyed and not f.timers[2].connected)
+end)
+test("A toast counts visible time and survives focus changes with no intervening background frames",function()
+    local f=fixture(390,650);f.show("Stay until read")
+    for _=1,20 do f.tick()end
+    f.input.WindowFocusReleased:fire();f.input.WindowFocused:fire()
+    f.tick(60);assert(not f.frames[1].destroyed)
+    f.gui.MenuOpened:fire();for _=1,100 do f.tick(60)end
+    assert(not f.frames[1].destroyed)
+    f.input.WindowFocusReleased:fire();f.gui.MenuClosed:fire();for _=1,100 do f.tick(60)end
+    assert(not f.frames[1].destroyed)
+    f.input.WindowFocused:fire();f.tick(60)
+    f.client.rotate(true);for _=1,100 do f.tick()end
+    assert(not f.frames[1].destroyed)
+    f.client.rotate(false);for _=1,14 do f.tick()end
+    assert(f.frames[1].destroyed and not f.timers[1].connected)
+end)
+test("A visible toast blocks the date cue until it closes and a destroyed UI releases its timer",function()
+    local f=fixture(390,650);assert(not f.client.paused())
+    f.show("Saved again");assert(f.client.paused() and f.refreshes==1)
+    for _=1,34 do f.tick()end
+    assert(not f.client.paused() and f.refreshes==2)
+    f.show("Another");f.frames[2]:Destroy();f.tick()
+    assert(not f.timers[2].connected and not f.client.paused())
 end)
 fs.writeFile("prototype/evidence/toast-layout-tests.json", serde.encode("json", { passed = #tests, tests = tests }, true))
 print("Passed " .. #tests .. " actual notification layout checks")

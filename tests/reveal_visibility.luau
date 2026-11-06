@@ -30,6 +30,8 @@ local function fixture(menuOpen,total)
         local gamePresentation
         local rotationRequired=false
         local modal
+        local toastFrame
+        local visibilityEpoch=0
     ]]..binding..[[
         local controller={revealing=true}
         local revealState=initialState

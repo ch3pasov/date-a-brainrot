@@ -67,17 +67,23 @@ local width, height = 1200, 760
 local playerGui = player:WaitForChild("PlayerGui")
 playerGui.ScreenOrientation = StarterGui.ScreenOrientation
 local rotationRequired = false
+local toastFrame
+local visibilityEpoch = 0
 local windowFocused, robloxMenuOpen = true, GuiService.MenuIsOpen
 local function revealIsPaused()
-    return not windowFocused or robloxMenuOpen or rotationRequired or modal ~= nil
+    return not windowFocused or robloxMenuOpen or rotationRequired or modal ~= nil or toastFrame ~= nil
 end
 local function refreshRevealPause()
     if gamePresentation and gamePresentation.refreshRevealPause then gamePresentation.refreshRevealPause() end
 end
-UserInputService.WindowFocusReleased:Connect(function() windowFocused=false; refreshRevealPause() end)
-UserInputService.WindowFocused:Connect(function() windowFocused=true; refreshRevealPause() end)
-GuiService.MenuOpened:Connect(function() robloxMenuOpen=true; refreshRevealPause() end)
-GuiService.MenuClosed:Connect(function() robloxMenuOpen=false; refreshRevealPause() end)
+local function visibilityChanged()
+    visibilityEpoch+=1
+    refreshRevealPause()
+end
+UserInputService.WindowFocusReleased:Connect(function() windowFocused=false; visibilityChanged() end)
+UserInputService.WindowFocused:Connect(function() windowFocused=true; visibilityChanged() end)
+GuiService.MenuOpened:Connect(function() robloxMenuOpen=true; visibilityChanged() end)
+GuiService.MenuClosed:Connect(function() robloxMenuOpen=false; visibilityChanged() end)
 local backdrop = UI.new("ScreenGui", { Name = "DateABrainrotBackdrop", ScreenInsets = Enum.ScreenInsets.None, ClipToDeviceSafeArea = false, ResetOnSpawn = false, DisplayOrder = 4 }, playerGui)
 UI.frame(backdrop, "Fill", UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), C.bg, 0)
 local gui = UI.new("ScreenGui", { Name = "DateABrainrot", ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets, ResetOnSpawn = false, DisplayOrder = 5, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, playerGui)
@@ -94,7 +100,7 @@ local phoneScreen = UI.frame(phoneIcon, "Screen", UDim2.fromOffset(5, 6), UDim2.
 UI.frame(phoneIcon, "Home", UDim2.fromOffset(12, 41), UDim2.fromOffset(6, 3), C.mint, 1)
 UI.label(rotationBox, "Title", "Поверни телефон", UDim2.fromOffset(24, 86), UDim2.new(1, -48, 0, 40), 25, C.text, true).TextXAlignment = Enum.TextXAlignment.Center
 UI.label(rotationBox, "Hint", "Держи его вертикально — так удобнее свайпать. Твой раунд останется с тобой.", UDim2.fromOffset(24, 140), UDim2.new(1, -48, 0, 64), 16, C.muted).TextXAlignment = Enum.TextXAlignment.Center
-local header, sidebar, body, toastFrame
+local header, sidebar, body
 local function cleanup()
     if inFlightGameInput and (not activeGame or activeGame.token ~= inFlightGameInput.token) then inFlightGameInput = nil end
     if gamePresentation then
@@ -137,7 +143,24 @@ local function toast(text, color)
     f.ZIndex = 30
     local label = UI.label(f, "Message", text, UDim2.fromOffset(16, 10), UDim2.new(1, -32, 1, -20), font, color == C.bad and C.panel or C.text, true); label.ZIndex = 31
     toastFrame = f
-    task.delay(3.3, function() if toastFrame == f then toastFrame = nil; f:Destroy() end end)
+    refreshRevealPause()
+    local elapsed,epoch=0,visibilityEpoch
+    local connection
+    connection=RunService.Heartbeat:Connect(function(delta)
+        if toastFrame~=f or not f.Parent then
+            connection:Disconnect()
+            if toastFrame==f then toastFrame=nil;refreshRevealPause()end
+            return
+        end
+        local uninterrupted=epoch==visibilityEpoch
+        epoch=visibilityEpoch
+        if uninterrupted and windowFocused and not robloxMenuOpen and not rotationRequired then
+            elapsed+=math.clamp(delta,0,.1)
+        end
+        if elapsed>=3.3 then
+            toastFrame=nil;f:Destroy();connection:Disconnect();refreshRevealPause()
+        end
+    end)
 end
 local pendingMatchNews, notificationScheduled = {}, false
 local seenMatchNews = {}
@@ -148,9 +171,8 @@ local function notifyMatches(news)
     if notificationScheduled or not next(pendingMatchNews) then return end
     notificationScheduled = true
     task.spawn(function()
-        while gui.Parent and (busy or swiping or gameInputLocked or dateRevealing or inputStart or modal or rotationRequired) do task.wait(.05) end
+        while gui.Parent and (busy or swiping or gameInputLocked or dateRevealing or inputStart or modal or rotationRequired or not windowFocused or robloxMenuOpen or toastFrame) do task.wait(.05) end
         if not gui.Parent then return end
-        task.wait()
         local count = 0; for _ in pendingMatchNews do count += 1 end
         table.clear(pendingMatchNews); notificationScheduled = false
         if count > 0 then
