@@ -604,13 +604,16 @@ local function renderAlbum()
         albumFocusTarget=location.focusFrame
     end
 end
-showIdeas = function(scrollPosition)
-    closeModal();modalRebuild=function()showIdeas(scrollPosition)end
+showIdeas = function(scrollPosition,ideaOffset)
+    ideaOffset=ideaOffset or 0
+    closeModal();modalRebuild=function()showIdeas(scrollPosition,ideaOffset)end
     modal=UI.overlay(canvas,"JourneyOverlay",.04)
-    modalViewer=JourneyBoard.mount(modal,JourneyIdeas.build(state),{
+    local ideas,hasMore=JourneyIdeas.build(state,ideaOffset)
+    modalViewer=JourneyBoard.mount(modal,ideas,{
         mobile=mobile,availableHeight=height,availableWidth=UI.availableWidth,scrollPosition=scrollPosition,
         scrolled=function(position)scrollPosition=position end,
         mount=mount,back=closeModal,
+        more=hasMore and function()if not busy then showIdeas(nil,ideaOffset+1)end end or nil,
         choose=function(idea)
             if busy then return end
             closeModal()
@@ -618,7 +621,7 @@ showIdeas = function(scrollPosition)
             elseif idea.kind=="travel" then startGame(idea.key,3,idea.locationId)
             elseif idea.kind=="remix" then startGame(idea.key,3,idea.locationId,idea.remixId)
             elseif idea.kind=="perfect" then startGame(idea.key,idea.practiceStage)
-            elseif idea.kind=="photo" then showPhotoStudio(idea.key)
+            elseif idea.kind=="photo" then nav("album",idea.key);showPhotoStudio(idea.key)
             elseif idea.kind=="discover" then nav("feed")
             else nav("matches") end
         end,

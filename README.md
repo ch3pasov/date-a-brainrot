@@ -68,7 +68,11 @@ Completing or replaying a story opens the album at that photo, including the rig
 page and scroll position. A highlight identifies it; later resizing keeps the
 player's reading position.
 
-410 offline checks and both source builds pass. The full-catalog simulation covers
+The Ideas board can cycle through other eligible stories, including photo sessions
+for completed collections. It keeps the chosen set when the window changes and
+shows the extra button only when alternatives exist.
+
+413 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.

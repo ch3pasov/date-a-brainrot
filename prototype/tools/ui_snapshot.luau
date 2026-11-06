@@ -46,6 +46,7 @@ local function snapshot(kind,width,height,scrolled)
         options.returning=kind=="return_letter";options.count=136
         box=h.module("src/client/MatchLetter.luau",{Icons=icons}).mount(h.root,character,Config.Variants[4],options).frame
     elseif kind=="ideas" then
+        options.more=noop
         box=h.module("src/client/JourneyBoard.luau",{Logic=Logic,Locations=Locations,Icons=icons}).mount(h.root,Ideas.build({album={photo},matches={}}),options).frame
     elseif kind=="booth" then
         box=h.module("src/client/PhotoBooth.luau",{Style=Style,Icons=icons,Decor=decor,Sticker=sticker}).mount(h.root,photo,options).frame

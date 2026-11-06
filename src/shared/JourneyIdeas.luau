@@ -11,7 +11,7 @@ local function known(entry)
     return type(entry)=="table" and characters[entry.characterId] and variants[entry.variantId]
         and entry.key==entry.characterId..":"..entry.variantId
 end
-local function sorted(entries,score)
+local function sorted(entries,score,offset)
     local out,seen={},{}
     for _,entry in entries or {} do
         if known(entry) and not seen[entry.key] then
@@ -23,21 +23,27 @@ local function sorted(entries,score)
         if a.score~=b.score then return a.score>b.score end
         return a.entry.key<b.entry.key
     end)
-    return out[1] and out[1].entry
+    return #out>0 and out[offset%#out+1].entry or nil,#out
 end
 local function idea(kind,entry,title,note,progress,total,action)
     return {kind=kind,key=entry and entry.key,characterId=entry and entry.characterId,variantId=entry and entry.variantId,
         title=title,note=note,progress=progress,total=total,action=action}
 end
-function Ideas.build(state)
+function Ideas.build(state,offset)
     local out={}
-    local active=sorted(state.matches,function(m)return type(m.stage)=="number" and m.stage>=1 and m.stage<=3 and m.stage%1==0 and m.stage or nil end)
+    local hasMore=false
+    local function choose(entries,score)
+        local entry,count=sorted(entries,score,offset or 0)
+        if count>1 then hasMore=true end
+        return entry
+    end
+    local active=choose(state.matches,function(m)return type(m.stage)=="number" and m.stage>=1 and m.stage<=3 and m.stage%1==0 and m.stage or nil end)
     if active then
         local nextStage=({"Переписка","Видеозвонок","Свидание"})[active.stage]
         local item=idea("continue",active,"Ещё шаг к селфи",nextStage.." ждёт. История продолжится с этого этапа.",active.stage-1,3,"Продолжить →")
         table.insert(out,item)
     end
-    local travel=sorted(state.album,function(photo)
+    local travel=choose(state.album,function(photo)
         local count=Collection.passport(photo).count
         return count<3 and count or nil
     end)
@@ -46,7 +52,7 @@ function Ideas.build(state)
         local item=idea("travel",travel,"Новое место вдвоём",Locations.get(locationId).short.." ещё впереди. Три места откроют рамку путешественников.",Collection.passport(travel).count,3,"На свидание →")
         item.locationId=locationId;table.insert(out,item)
     end
-    local souvenir=sorted(state.album,function(photo)
+    local souvenir=choose(state.album,function(photo)
         local count=Remix.progress(photo).collected
         return count<6 and count or nil
     end)
@@ -65,7 +71,7 @@ function Ideas.build(state)
         item.locationId=locationId;item.remixId=remixId;table.insert(out,item)
     end
     if #out<3 then
-        local perfect=sorted(state.album,function(photo)
+        local perfect=choose(state.album,function(photo)
             local count=0;for i=1,3 do if photo.scores and photo.scores[tostring(i)]==1 then count+=1 end end
             return count<3 and count or nil
         end)
@@ -81,7 +87,7 @@ function Ideas.build(state)
         end
     end
     if #out<3 then
-        local photo=sorted(state.album,function(p)return Collection.perfect(p) and Collection.passport(p).complete and Remix.progress(p).collected==6 and 1 or nil end)
+        local photo=choose(state.album,function(p)return Collection.perfect(p) and Collection.passport(p).complete and Remix.progress(p).collected==6 and 1 or nil end)
         if photo then table.insert(out,idea("photo",photo,"Всё собрано — улыбаемся!","Все рамки открыты. Выбери позу, рамку и сохрани вашу открытку.",nil,nil,"В фотобудку →")) end
     end
     if #out<3 then
@@ -97,6 +103,6 @@ function Ideas.build(state)
     if #out==0 then
         table.insert(out,idea("inbox",nil,"Заглянем в знакомства","Новые ответы и ваши истории ждут в знакомствах.",nil,nil,"Открыть →"))
     end
-    return out
+    return out,hasMore
 end
 return Ideas

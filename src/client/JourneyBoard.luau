@@ -63,8 +63,13 @@ function Board.mount(parent, ideas, options)
     list.CanvasSize=UDim2.fromOffset(0,options.mobile and top or maxH+14)
     list.CanvasPosition=options.scrollPosition or Vector2.new(0,0)
     if options.scrolled then list:GetPropertyChangedSignal("CanvasPosition"):Connect(function()options.scrolled(list.CanvasPosition)end) end
-    local close=UI.button(box,"CloseIdeas","← В альбом",UDim2.fromOffset(24,footerY),UDim2.new(1,-48,0,actionH),C.card,options.back)
-    close.TextSize=font
+    local footerW=options.more and (w-60)/2 or w-48
+    local close=UI.button(box,"CloseIdeas","← В альбом",UDim2.fromOffset(24,footerY),UDim2.fromOffset(footerW,actionH),C.card,options.back)
+    close.TextSize=font;close.TextWrapped=true
+    if options.more then
+        local more=UI.button(box,"MoreIdeas","Ещё идеи ↻",UDim2.fromOffset(36+footerW,footerY),UDim2.fromOffset(footerW,actionH),C.yellow,options.more)
+        more.TextSize=font;more.TextWrapped=true
+    end
     return {frame=box,dispose=function()for _,view in viewers do view.dispose()end;table.clear(viewers)end}
 end
 return Board

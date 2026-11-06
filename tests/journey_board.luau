@@ -22,13 +22,21 @@ test("Actual idea cards show their progress and keep all actions accessible on c
         local icons=f.module("src/client/ToyIcons.luau")
         local board=f.module("src/client/JourneyBoard.luau",{Logic=Logic,Locations=Locations,Icons=icons})
         local options=f.options();options.scrollPosition=roblox.Vector2.new(0,80)
+        local requested=0
         options.choose=function(idea)table.insert(chosen,idea)end;options.back=function()end
+        options.more=function()requested+=1 end
         options.mount=function()mounts+=1;return{dispose=function()disposed+=1 end}end
         local controller=board.mount(f.root,suggestions,options);local box=controller.frame
         local w,h=box.Size.X.Offset,box.Size.Y.Offset
         assert(w*f.logical.scale<=screen[1] and h<=f.logical.height)
         local list,close=rect(box.Ideas,w,h),rect(box.CloseIdeas,w,h)
         assert(list.h>100 and list.y+list.h+8<=close.y and close.h*f.logical.scale>=44)
+        local more=rect(box.MoreIdeas,w,h)
+        assert(close.x+close.w+8<=more.x and more.x+more.w<=w-24 and more.h*f.logical.scale>=44)
+        for _,button in {box.CloseIdeas,box.MoreIdeas}do
+            assert(button.TextWrapped and f.ui.textHeight(button.Text,button.TextSize,button.Size.X.Offset-12,true)<=button.Size.Y.Offset-8)
+        end
+        assert(requested==0);box.MoreIdeas.action();assert(requested==1)
         local previousBottom=0
         for _,idea in suggestions do
             local card=box.Ideas["Idea_"..idea.kind];local r=rect(card,list.w,list.h)
@@ -79,9 +87,32 @@ test("Client idea choices route to the requested stage, place and remix only aft
     assert(f.games[3][2]==3 and f.games[3][3]=="cafe" and f.games[3][4]=="reverse")
     assert(f.games[4][1]=="four" and f.games[4][2]==2)
     f.options.choose({kind="photo",key="five"});f.options.choose({kind="discover"});f.options.choose({kind="inbox"})
-    assert(f.photos[1]=="five" and f.tabs[1]=="feed" and f.tabs[2]=="matches")
+    assert(f.photos[1]=="five" and f.tabs[1]=="album" and f.tabs[2]=="feed" and f.tabs[3]=="matches")
     client.busy(true);f.options.choose({kind="continue",key="no"});assert(#f.games==4)
     f.options.scrolled({Y=240});client.rebuild();assert(f.options.scrollPosition.Y==240)
+end)
+test("Explicit idea changes survive rebuilds, reset scroll and stay blocked during a request",function()
+    local source=fs.readFile("src/client/App.client.luau")
+    local first=assert(source:find("showIdeas = function(",1,true));local last=assert(source:find("showStory = function(",first,true))
+    local localState={album=table.clone(state.album),matches={}}
+    table.insert(localState.album,{key=Catalog[2].id..":classic",characterId=Catalog[2].id,variantId="classic",locationId="park",scores={}})
+    local f={renders=0}
+    local client=luau.load([[
+        local showIdeas,modal,modalViewer,modalRebuild
+        local busy=false
+    ]]..source:sub(first,last-1)..[[
+        return {open=showIdeas,busy=function(value)busy=value end,rebuild=function()modalRebuild()end}
+    ]],{environment={
+        state=localState,JourneyIdeas=Ideas,mobile=true,height=760,UI={availableWidth=700,overlay=function()return{}end},
+        closeModal=function()end,Feedback={pop=function()end},
+        JourneyBoard={mount=function(_,ideas,options)f.ideas=ideas;f.options=options;f.renders+=1;return{frame={}}end},
+    }})()
+    client.open();local original=f.ideas[1].key;assert(f.options.more)
+    f.options.scrolled({Y=160});client.busy(true);f.options.more();assert(f.renders==1)
+    client.busy(false);f.options.more();assert(f.ideas[1].key~=original and f.options.scrollPosition==nil)
+    local chosen=f.ideas[1].key;f.options.scrolled({Y=60});client.rebuild()
+    assert(f.ideas[1].key==chosen and f.options.scrollPosition.Y==60)
+    table.remove(localState.album,2);client.open();assert(f.options.more==nil)
 end)
 fs.writeFile("prototype/evidence/journey-board-tests.json",serde.encode("json",{passed=#tests,tests=tests,
     scope="Production idea board geometry and route callbacks; controlled scene/UI, no live game test"},true))

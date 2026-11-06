@@ -77,5 +77,36 @@ test("Suggestions ignore unknown records and keep a deterministic tie order and 
     for _,c in Catalog do for _,v in Config.Variants do empty.swipes[c.id..":"..v.id]="passed" end end
     assert(Ideas.build(empty)[1].kind=="inbox")
 end)
+test("More ideas cycles eligible stories without losing progress or changing the snapshot",function()
+    local p,keys=fixture();complete(p,keys[1]);complete(p,keys[2])
+    local state=Logic.publicSnapshot(p,110);local before=serde.encode("json",state)
+    local first,hasMore=Ideas.build(state)
+    local second=Ideas.build(state,1);local wrapped=Ideas.build(state,2)
+    assert(hasMore and find(first,"continue").key==keys[3] and find(second,"continue").key==keys[3])
+    for _,kind in {"travel","remix"}do
+        assert(find(first,kind).key~=find(second,kind).key and find(first,kind).key==find(wrapped,kind).key)
+    end
+    assert(serde.encode("json",state)==before)
+    local single={album={state.album[1]},matches={}}
+    local _,singleMore=Ideas.build(single);assert(not singleMore)
+    local _,emptyMore=Ideas.build({album={},matches={}});assert(not emptyMore)
+end)
+test("The whole collection is reachable through more ideas, including completed photo sessions",function()
+    local state={album={},matches={}};local seen={travel={},remix={},perfect={}}
+    for _,c in Catalog do for _,v in Config.Variants do
+        table.insert(state.album,{key=c.id..":"..v.id,characterId=c.id,variantId=v.id,locationId="park",scores={}})
+    end end
+    for offset=0,#state.album-1 do
+        local ideas,more=Ideas.build(state,offset);assert(more and #ideas==3)
+        for _,item in ideas do assert(not seen[item.kind][item.key]);seen[item.kind][item.key]=true end
+    end
+    for _,photo in state.album do
+        photo.scores={["1"]=1,["2"]=1,["3"]=1};photo.remixScores={}
+        for _,place in Locations.list do for _,mode in Remix.list do photo.remixScores[Remix.key(place.id,mode.id)]=1 end end
+    end
+    local first,more=Ideas.build(state);local second=Ideas.build(state,1)
+    assert(more and find(first,"photo").key~=find(second,"photo").key)
+    assert(not find(first,"travel") and not find(first,"remix") and not find(first,"perfect"))
+end)
 fs.writeFile("prototype/evidence/journey-ideas-tests.json",serde.encode("json",{passed=#tests,tests=tests},true))
 print("Passed "..#tests.." journey idea progression checks")
