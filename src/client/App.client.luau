@@ -51,6 +51,7 @@ local gameInputLocked = false
 local dateRevealing = false
 local scrollPositions = {}
 local renderedListKey = nil
+local renderedFeedKey,pendingFeedRestore
 local gamePresentation = nil
 local gamePresentationToken, dateRevealState = nil, nil
 local dateCollectionState = nil
@@ -957,11 +958,16 @@ end
 
 render = function(preserveModal)
     local rebuild = preserveModal and modalRebuild
+    if body and renderedFeedKey and pendingFeedRestore~=body then
+        local range=math.max(0,body.AbsoluteCanvasSize.Y-body.AbsoluteWindowSize.Y)
+        scrollPositions[renderedFeedKey]={ratio=range>0 and math.clamp(body.CanvasPosition.Y/range,0,1) or 0}
+    end
     if body and renderedListKey then
         local list = body:FindFirstChild("AlbumGrid") or body:FindFirstChild("MatchList")
         if list then scrollPositions[renderedListKey] = list.CanvasPosition end
     end
     inputStart = nil; dragDistance = 0; albumFocusTarget=nil
+    renderedFeedKey=nil;pendingFeedRestore=nil
     cleanup(); closeModal(); toastFrame = nil
     buildShell()
     if not profileReady then renderLoadScreen(); return end
@@ -970,6 +976,21 @@ render = function(preserveModal)
     elseif activeTab == "feed" then renderFeed()
     elseif activeTab == "matches" then renderMatches()
     else renderAlbum() end
+    if mobile and not activeGame and activeTab=="feed" and currentCard then
+        local key="feed:"..Logic.key(currentCard.characterId,currentCard.variantId)
+        renderedFeedKey=key
+        local saved=scrollPositions[key]
+        if saved then
+            local surface=body;pendingFeedRestore=surface
+            task.defer(function()
+                task.wait()
+                if not surface.Parent then return end
+                local range=math.max(0,surface.AbsoluteCanvasSize.Y-surface.AbsoluteWindowSize.Y)
+                surface.CanvasPosition=Vector2.new(0,range*saved.ratio)
+                if pendingFeedRestore==surface then pendingFeedRestore=nil end
+            end)
+        end
+    end
     renderedListKey = nil
     if not activeGame then
         local list = body:FindFirstChild(activeTab == "album" and "AlbumGrid" or "MatchList")
