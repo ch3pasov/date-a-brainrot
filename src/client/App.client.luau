@@ -51,7 +51,6 @@ local dateCollectionState = nil
 local gameReactionState = nil
 local inFlightGameInput = nil
 local previewLocationId = "park"
-local datePickerLocationId = "park"
 local preferenceState, preferenceWorker = Preferences.new(), false
 local savePreferences, setPreference
 local actions = {}
@@ -697,17 +696,18 @@ local function submitGame(choice)
     syncGameControls()
 end
 actions.gameInput = submitGame
-local function chooseLocation(key, practiceStage)
+local function chooseLocation(key, practiceStage, selectedLocationId)
     local match = getMatch(key); if not match then return end
     local character, variant = Logic.character(match.characterId), Logic.variant(match.variantId)
-    local passport
-    for _, photo in state.album do if photo.key == key then passport = Collection.passport(photo); break end end
-    closeModal(); modalRebuild = function() chooseLocation(key, practiceStage) end
+    local passport, story
+    for _, photo in state.album do if photo.key == key then story = photo; passport = Collection.passport(photo); break end end
+    local selected = selectedLocationId or (story and (Collection.nextPlace(story) or story.locationId)) or Locations.forPersonality(character.personality)
+    closeModal(); modalRebuild = function() chooseLocation(key, practiceStage, selected) end
     modal = UI.overlay(canvas, "LocationPickerOverlay", .04)
     modalViewer = DatePlaces.mount(modal, character, variant, {
-        mobile = mobile, availableHeight = height, selectedLocationId = datePickerLocationId, passport = passport,
+        mobile = mobile, availableHeight = height, selectedLocationId = selected, passport = passport,
         userId = state.playerUserId or player.UserId, avatarSnapshot = state.avatarSnapshot,
-        select = function(id) datePickerLocationId = id end,
+        select = function(id) selected = id end,
         choose = function(id) closeModal(); startGame(key, practiceStage, id) end,
         cancel = function() closeModal(); if practiceStage then showStory(key) end end,
     })

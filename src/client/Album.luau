@@ -33,26 +33,44 @@ function Album.passport(parent, photo, position, size)
 end
 function Album.render(body, state, mobile, page, callbacks)
     local stats = Collection.stats(state.album)
-    UI.label(body, "Title", mobile and "АЛЬБОМ\nСТРАННЫХ СВИДАНИЙ" or "АЛЬБОМ СТРАННЫХ СВИДАНИЙ", UDim2.fromOffset(5, 0), UDim2.new(1, -10, 0, mobile and 76 or 47), mobile and 28 or 30, C.ink, true)
-    UI.label(body, "Description", stats.total > 0 and ("Разных персонажей: " .. stats.characters .. "  ·  Историй: " .. stats.total) or "Три маленьких шага — ваша первая история.", UDim2.fromOffset(5, mobile and 80 or 54), UDim2.new(1, -10, 0, 48), UI.readableSize(16, 10), C.muted)
+    local titleFont = UI.readableSize(mobile and 28 or 30)
+    local titleH = math.max(mobile and 76 or 47, math.ceil(titleFont * (mobile and 2.6 or 1.3)))
+    local descriptionH = math.max(48, math.ceil(UI.readableSize(16, 10) * 2.6))
+    UI.label(body, "Title", mobile and "АЛЬБОМ\nСТРАННЫХ СВИДАНИЙ" or "АЛЬБОМ СТРАННЫХ СВИДАНИЙ", UDim2.fromOffset(5, 0), UDim2.new(1, -10, 0, titleH), titleFont, C.ink, true)
+    UI.label(body, "Description", stats.total > 0 and ("Историй: " .. stats.total .. "  ·  Сувениров: " .. stats.souvenirs) or "Три маленьких шага — ваша первая история.", UDim2.fromOffset(5, titleH + 4), UDim2.new(1, -10, 0, descriptionH), UI.readableSize(16, 10), C.muted)
+    local countersY = titleH + descriptionH + 8
     if #state.album == 0 then
         Empty.mount(body, {
-            mobile = mobile, top = mobile and 140 or 115, icon = "photo", badge = "МЕСТО ДЛЯ ВАС ДВОИХ",
+            mobile = mobile, top = countersY + 8, icon = "photo", badge = "МЕСТО ДЛЯ ВАС ДВОИХ",
             title = "ПЕРВОЕ СЕЛФИ ВПЕРЕДИ",
             note = "Чат, звонок, свидание — и здесь появится ваша встреча.",
             actionText = "К МОИМ МЭТЧАМ →", action = callbacks.matches,
         })
         return
     end
-    local countersY = mobile and 132 or 103
+    local counterFont = UI.readableSize(12, 10)
+    local counterH = math.max(28, math.ceil(counterFont * ((UI.scale or 1) < .5 and 2.5 or 1.3)))
     for i, variant in Config.Variants do
-        UI.pill(body, "Count_" .. variant.id, ({"База", "Золото", "Неон", "Космос"})[i] .. " " .. stats.variants[variant.id], UDim2.new((i - 1) / 4, 0, 0, countersY), mobile and 100 or 222, UI.rgb(variant.color)).Label.TextSize = UI.readableSize(12, 10)
+        local counter = UI.pill(body, "Count_" .. variant.id, ({"База", "Золото", "Неон", "Космос"})[i] .. " " .. stats.variants[variant.id], UDim2.new((i - 1) / 4, 0, 0, countersY), mobile and 100 or 222, UI.rgb(variant.color))
+        counter.Size = UDim2.new(.25, -8, 0, counterH); counter.Label.TextSize = counterFont
     end
-    local gridY = countersY + 44
+    local gridY = countersY + counterH + 16
     local pager = ListLayout.pagination(body.Size.Y.Offset, UI.touchMinimum)
     local scroll = UI.new("ScrollingFrame", { Name = "AlbumGrid", Position = UDim2.fromOffset(0, gridY), Size = UDim2.new(1, 0, 1, -gridY - (#state.album > 6 and pager.size + 10 or 6)), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 4, CanvasSize = UDim2.fromOffset(0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y }, body)
     local columns = mobile and 1 or 3
-    local artHeight, photoHeight = mobile and 259 or 219, mobile and 438 or 398
+    local artHeight = mobile and 259 or 219
+    local nameFont = UI.readableSize(mobile and 23 or 17)
+    local captionFont = UI.readableSize(mobile and 15 or 12, 10)
+    local hintFont = UI.readableSize(mobile and 15 or 12, 10)
+    local nameH = math.max(49, math.ceil(nameFont * 2.6))
+    local captionH = math.max(22, math.ceil(captionFont * 1.3))
+    local passportH = math.max(29, math.ceil(UI.readableSize(11, 10) * 1.5))
+    local hintH = math.max(24, math.ceil(hintFont * 1.4))
+    local nameY = artHeight + 18
+    local captionY = nameY + nameH + 6
+    local passportY = captionY + captionH + 10
+    local hintY = passportY + passportH + 10
+    local photoHeight = hintY + hintH + 12
     UI.new("UIGridLayout", { CellSize = UDim2.new(1 / columns, -12, 0, photoHeight), CellPadding = UDim2.fromOffset(14, 16), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
     page = math.clamp(page, 1, math.ceil(#state.album / 6))
     for i = (page - 1) * 6 + 1, math.min(page * 6, #state.album) do
@@ -65,10 +83,10 @@ function Album.render(body, state, mobile, page, callbacks)
         tape.Rotation = -4; tape.BackgroundTransparency = .22; tape.ZIndex = 3
         local perfect = Collection.perfect(a)
         UI.pill(art, "Together", perfect and "ИДЕАЛЬНЫЙ ВАЙБ ♥" or "НАША ИСТОРИЯ ♥", UDim2.fromOffset(7, 10), mobile and 174 or 195, perfect and Color3.fromRGB(255,205,112) or C.pink).Label.TextSize = UI.readableSize(12, 9)
-        UI.label(photo, "Name", c.name, UDim2.fromOffset(14, artHeight + 18), UDim2.new(1, -28, 0, 49), mobile and 23 or 17, C.ink, true)
-        UI.label(photo, "Caption", Locations.get(a.locationId).short .. "  ·  " .. v.label, UDim2.fromOffset(14, artHeight + 72), UDim2.new(1, -28, 0, 22), UI.readableSize(mobile and 15 or 12, 10), C.muted)
-        Album.passport(photo, a, UDim2.fromOffset(14, artHeight + 103), UDim2.new(1, -28, 0, 29))
-        UI.label(photo, "OpenHint", "ЭТА ИСТОРИЯ ВАША  →", UDim2.fromOffset(14, artHeight + 143), UDim2.new(1, -28, 0, 24), UI.readableSize(mobile and 15 or 12, 10), C.pink, true)
+        UI.label(photo, "Name", c.name, UDim2.fromOffset(14, nameY), UDim2.new(1, -28, 0, nameH), nameFont, C.ink, true)
+        UI.label(photo, "Caption", Locations.get(a.locationId).short .. "  ·  " .. v.label, UDim2.fromOffset(14, captionY), UDim2.new(1, -28, 0, captionH), captionFont, C.muted)
+        Album.passport(photo, a, UDim2.fromOffset(14, passportY), UDim2.new(1, -28, 0, passportH))
+        UI.label(photo, "OpenHint", Collection.goalHint(a), UDim2.fromOffset(14, hintY), UDim2.new(1, -28, 0, hintH), hintFont, C.pink, true)
         local touch = UI.new("TextButton", { Name = "OpenStory", Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 5 }, photo)
         touch.Activated:Connect(function() Feedback.play("tap"); callbacks.open(a.key) end)
     end

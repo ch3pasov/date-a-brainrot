@@ -25,9 +25,10 @@ function Harness.new(width, height)
         return object
     end
     local enum = { TextXAlignment = {Center="center", Left="left"}, TextYAlignment = {Center="center"},
-        ApplyStrokeMode = {Border="border"}, Font = {GothamBlack="bold", Gotham="regular"} }
+        ApplyStrokeMode = {Border="border"}, Font = {GothamBlack="bold", Gotham="regular"},
+        AutomaticSize = {Y="y"}, SortOrder = {LayoutOrder="order"} }
     local env = { Instance={new=instance}, Color3=roblox.Color3, UDim=roblox.UDim, UDim2=roblox.UDim2,
-        Enum=enum, Feedback={bind=function() end} }
+        Enum=enum, Feedback={bind=function() end, play=function() end} }
     local source = fs.readFile("src/client/UI.luau")
     local first = assert(source:find("local UI = {}", 1, true))
     local ui = luau.load(source:sub(first), {environment=env})()

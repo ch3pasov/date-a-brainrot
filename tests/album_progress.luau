@@ -1,6 +1,7 @@
 local Logic = require("../src/shared/GameLogic")
 local Catalog = require("../src/shared/Catalog")
 local Collection = require("../src/shared/Collection")
+local Remix = require("../src/shared/DateRemix")
 local serde = require("@lune/serde")
 local fs = require("@lune/fs")
 local tests = {}
@@ -22,6 +23,31 @@ local function roundtrip(profile)
     assert(Logic.validSavedProfile(restored))
     return Logic.normalizeProfile(restored,5000)
 end
+test("The next outing suggests only an unvisited place, including legacy selfies", function()
+    local photo = {locationId="cafe"}
+    assert(Collection.nextPlace(photo)=="park")
+    photo.visitedLocations={park=true}
+    assert(Collection.nextPlace(photo)=="rooftop")
+    photo.visitedLocations.rooftop=true
+    assert(Collection.nextPlace(photo)==nil)
+    assert(Collection.nextPlace({})=="cafe")
+end)
+test("Album goals move from new places to souvenirs and acknowledge completion", function()
+    local p = story(); local photo=p.album[key]
+    assert(Collection.goalHint(photo):find("Кафе",1,true))
+    for _, place in {"cafe","park","rooftop"} do Logic.recordSelfie(p,key,place,123,nil,1200) end
+    assert(Collection.goalHint(photo):find("0/6",1,true))
+    for _, place in {"cafe","park","rooftop"} do
+        for _, mode in Remix.list do assert(Logic.finishRemix(p,key,place,mode.id,1)) end
+    end
+    assert(Collection.goalHint(photo)=="ВСЕ СУВЕНИРЫ СОБРАНЫ ♥")
+end)
+test("Album souvenir totals count valid distinct stories once", function()
+    local p=story(); assert(Logic.finishRemix(p,key,"cafe","long",1))
+    local photo=p.album[key]; local clone=table.clone(photo)
+    local invalid={key="not-a-story",characterId="unknown",variantId="classic",remixScores=photo.remixScores}
+    assert(Collection.stats({photo,clone,invalid}).souvenirs==1)
+end)
 test("An old selfie becomes the first passport stamp without losing its story", function()
     local profile = story()
     local photo = profile.album[key]

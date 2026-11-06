@@ -17,8 +17,10 @@ Completed stories now unlock two optional date remixes: a six-item order and a
 reverse-order memory game. Collect six illustrated souvenirs per story, one for
 each location and mode. Scores and souvenirs persist separately from the original
 selfie and best scores. Retries are unlimited and never remove earned progress.
+The album suggests unvisited places, tracks souvenirs and adapts text spacing on
+small screens. A replay proposes a new place while keeping your manual selection.
 
-301 offline checks and both source builds pass. New UI geometry and actions are
+305 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 
