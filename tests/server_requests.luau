@@ -12,6 +12,7 @@ local Locations = require("../src/shared/Locations")
 local Remix = require("../src/shared/DateRemix")
 local PhotoStyle = require("../src/shared/PhotoStyle")
 local Ideas = require("../src/shared/JourneyIdeas")
+local Collection = require("../src/shared/Collection")
 local source = fs.readFile("src/server/GameServer.server.luau")
 local function section(firstMarker, lastMarker)
     local first = assert(source:find(firstMarker, 1, true))
@@ -22,6 +23,7 @@ local production = section("local function payload(player, extra)", "\nStore.onC
     .. section("requestSave = function(player, delaySeconds)", "\nlocal function join(player)") .. "\n"
     .. section("local function feed(player)", "\ntask.spawn(function()\n    while true do")
 local tests = {}
+local catalogLoop
 local function test(name, fn)
     local ok, err = pcall(fn)
     table.insert(tests, { name = name, passed = ok, error = if ok then nil else tostring(err) })
@@ -105,6 +107,30 @@ local function fixture()
         assert(Logic.swipe(f.profiles[player], Catalog[1].id, "classic", true, f.wall,
             { acceptance = 0, timing = timing or 0, delay = 0 }))
         return Logic.key(Catalog[1].id, "classic")
+    end
+    function f.play(player,args,miss)
+        local view=f.invoke(player,"startGame",args);assert(view.token and not view.error)
+        if view.stage==3 then
+            assert(view.awaitingReady and not view.sequence)
+            view=f.invoke(player,"readyGame",{token=view.token});f.clock+=5
+        end
+        local session=f.api.game(player)
+        local total=view.stage==2 and 6 or (view.total or 4)
+        local last
+        for turn=1,total do
+            local correct
+            if view.stage==1 then correct=session.chat[turn].best
+            elseif view.stage==2 then correct=Locations.gesture(turn,session.gestureSeed)
+            else correct=Remix.answer(session.sequence,session.remixId,turn) end
+            local choice=(miss==true or miss==turn) and correct%(view.stage==3 and 4 or 3)+1 or correct
+            f.clock+=.5
+            local input={token=view.token,turn=turn,choice=choice}
+            last=f.invoke(player,"gameInput",input);assert(not last.error)
+            local replay=f.invoke(player,"gameInput",input)
+            if turn<total then assert(replay.resynced);view=last
+            else assert(replay.error=="expired_game" and last.passed~=nil) end
+        end
+        f.completed=(f.completed or 0)+1;f.answered=(f.answered or 0)+total;return last
     end
     return f
 end
@@ -436,30 +462,7 @@ test("Photo sticker RPC verifies ownership, saves promptly and makes retries ide
 end)
 test("A full story, every venue and souvenir, styled photo and JSON rejoin retain one coherent collection",function()
     local f=fixture();local key=f.match(f.a);local completed=0
-    local function play(args,miss)
-        local view=f.invoke(f.a,"startGame",args);assert(view.token and not view.error)
-        if view.stage==3 then
-            assert(view.awaitingReady and not view.sequence)
-            view=f.invoke(f.a,"readyGame",{token=view.token});f.clock+=5
-        end
-        local session=f.api.game(f.a)
-        local total=view.stage==2 and 6 or (view.total or 4)
-        local last
-        for turn=1,total do
-            local correct
-            if view.stage==1 then correct=session.chat[turn].best
-            elseif view.stage==2 then correct=Locations.gesture(turn,session.gestureSeed)
-            else correct=Remix.answer(session.sequence,session.remixId,turn) end
-            local choice=(miss==true or miss==turn) and correct%(view.stage==3 and 4 or 3)+1 or correct
-            f.clock+=.5
-            local input={token=view.token,turn=turn,choice=choice}
-            last=f.invoke(f.a,"gameInput",input);assert(not last.error)
-            local replay=f.invoke(f.a,"gameInput",input)
-            if turn<total then assert(replay.resynced);view=last
-            else assert(replay.error=="expired_game" and last.passed~=nil) end
-        end
-        completed+=1;return last
-    end
+    local function play(args,miss)completed+=1;return f.play(f.a,args,miss)end
     assert(play({key=key},2).score==.75)
     assert(play({key=key}).score==1)
     assert(play({key=key,locationId="park"},4).result=="album")
@@ -495,9 +498,56 @@ test("A full story, every venue and souvenir, styled photo and JSON rejoin retai
     assert(rejoined.profiles[rejoined.a].revision==revision and #rejoined.delayed==0)
     assert(#f.warnings==0 and #rejoined.warnings==0)
 end)
+test("Every character and variant can finish the whole collection and rejoin with all goals complete",function()
+    local f=fixture();local count=0;local styleByKey={};local saves=0
+    for _,character in Catalog do for _,variant in Config.Variants do
+        local response=f.invoke(f.a,"swipe",{characterId=character.id,variantId=variant.id,liked=true})
+        assert(response.result=="matched" and not response.error)
+        local key=Logic.key(character.id,variant.id)
+        for stage=1,3 do
+            local result=f.play(f.a,{key=key,locationId="park"})
+            assert(result.passed and result.score==1 and result.stage==stage)
+        end
+        for _,place in Locations.list do for _,mode in Remix.list do
+            local result=f.play(f.a,{key=key,practiceStage=3,locationId=place.id,remixId=mode.id})
+            assert(result.passed and result.unlocked and result.score==1)
+            assert(result.recap.total==mode.total and result.recap.dateReview.locationId==place.id)
+        end end
+        count+=1
+        local pose=PhotoStyle.poses[(count-1)%#PhotoStyle.poses+1].id
+        local frame=PhotoStyle.frames[(count-1)%#PhotoStyle.frames+1].id
+        local place=Locations.list[(count-1)%#Locations.list+1].id
+        local sticker=Remix.key(place,Remix.list[(count-1)%#Remix.list+1].id)
+        assert(not f.invoke(f.a,"pinSouvenir",{key=key,souvenirId=sticker}).error)
+        assert(not f.invoke(f.a,"stylePhoto",{key=key,poseId=pose,frameId=frame}).error)
+        styleByKey[key]={pose=pose,frame=frame,sticker=sticker}
+        f.drain();saves+=#f.saves
+        if count<#Catalog*#Config.Variants then f.saves={}end
+    end end
+    local saved=f.saves[#f.saves].data;local bytes=encoded(saved)
+    assert(Logic.validSavedProfile(saved) and not bytes:find("dateReview",1,true))
+    local rejoined=fixture()
+    rejoined.profiles[rejoined.a]=Logic.normalizeProfile(serde.decode("json",bytes),2000)
+    local snapshot=rejoined.invoke(rejoined.a,"snapshot");local stats=Collection.stats(snapshot.album)
+    assert(count==#Catalog*#Config.Variants and stats.total==count and stats.characters==#Catalog)
+    assert(stats.completedPassports==count and stats.souvenirs==count*6)
+    assert(#snapshot.matches==count and snapshot.totalLikes==count and snapshot.pending==0 and #snapshot.feed==0)
+    for _,variant in Config.Variants do assert(stats.variants[variant.id]==#Catalog)end
+    for _,photo in snapshot.album do
+        local expected=styleByKey[photo.key]
+        assert((photo.photoPose or "idle")==expected.pose and (photo.photoFrame or "classic")==expected.frame)
+        assert(photo.pinnedSouvenir==expected.sticker and Collection.perfect(photo) and Remix.progress(photo).collected==6)
+        assert(photo.locationId=="park" and photo.avatarUserId==f.a.UserId)
+        for _,frame in PhotoStyle.frames do assert(PhotoStyle.unlocked(photo,frame.id))end
+    end
+    local ideas=Ideas.build(snapshot);assert(#ideas==1 and ideas[1].kind=="photo")
+    assert(f.completed==count*9 and f.answered==count*44 and #f.warnings==0 and #rejoined.warnings==0)
+    catalogLoop={stories=count,completed_rounds=f.completed,answered_turns=f.answered,duplicate_inputs=f.answered,
+        souvenirs=stats.souvenirs,complete_passports=stats.completedPassports,controlled_saves=saves,json_bytes_without_avatar_assets=#bytes}
+end)
 local passed = 0; for _, record in tests do if record.passed then passed += 1 end end
 fs.writeFile("prototype/evidence/server-request-tests.json", serde.encode("json", { passed = passed, failed = #tests - passed,
-    total = #tests, tests = tests, production_changed_by_test = false,
+    total = #tests, tests = tests, catalog_loop = catalogLoop, production_changed_by_test = false,
     scope = "Actual production RPC/handle/save functions and real shared logic, controlled services/time/deferred callbacks only; no live engine, profile, transport or storage" }, true))
 for _, record in tests do assert(record.passed, record.name .. ": " .. tostring(record.error)) end
 print("Passed " .. passed .. " actual server request boundary checks")
