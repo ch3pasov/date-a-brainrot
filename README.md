@@ -127,7 +127,7 @@ with measured text that stays in the scrollable rules area.
 Remix cards measure full souvenir names, rules, records and actions. Buttons wrap
 long labels, and the return action stays fixed while browsing the collection.
 
-438 offline checks and both source builds pass. The full-catalog simulation covers
+440 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.

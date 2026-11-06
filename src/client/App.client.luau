@@ -736,9 +736,10 @@ showRemixes = function(key, scrollPosition)
         scrollPosition = scrollPosition, scrollChanged = function(position) scrollPosition = position end,
         play = function(locationId, remixId) startGame(key, 3, locationId, remixId) end,
         pin = function(souvenirId)
+            if busy then return end
             if rpc("pinSouvenir", {key = key, souvenirId = souvenirId}) then showRemixes(key, scrollPosition) end
         end,
-        back = function() showStory(key) end,
+        back = function() if not busy then showStory(key) end end,
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .94) end
 end
