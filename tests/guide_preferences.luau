@@ -47,6 +47,7 @@ local function fixture()
     function ui.button(parent, name, text, _, _, _, callback) return node(parent, name, { Text = text, activate = callback }) end
     function ui.stroke() return {} end
     function ui.readableSize(size) return size end
+    function ui.textHeight(text,size,width) return math.ceil(math.max(1,math.ceil((utf8.len(text) or #text)*size*.75/width))*size*1.35) end
     local canvas = node(nil, "Canvas")
     local icons = {}; for _, key in { "phone", "clock", "photo", "video" } do icons[key] = function(parent) return node(parent, "Icon_" .. key) end end
     local guide = luau.load(guideSource:sub(guideFirst), { environment = {

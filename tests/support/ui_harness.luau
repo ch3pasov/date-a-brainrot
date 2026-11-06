@@ -10,7 +10,14 @@ function Harness.new(width, height)
     local function instance(class)
         local fields = { ClassName = class, Name = class, children = {}, attributes = {}, signals = {} }
         local object
-        fields.FindFirstChild = function(_, name) return fields.children[name] end
+        fields.FindFirstChild = function(_, name, recursive)
+            if fields.children[name] then return fields.children[name] end
+            if recursive then
+                for _,child in fields.children do
+                    local found=child:FindFirstChild(name,true);if found then return found end
+                end
+            end
+        end
         fields.IsA=function(_,expected)return class==expected end
         fields.GetChildren=function()local out={};for _,child in fields.children do table.insert(out,child)end;return out end
         fields.GetPropertyChangedSignal = function(_, property) return {Connect = function(_,callback) fields.signals[property]=callback end} end

@@ -626,11 +626,20 @@ local function renderMatches()
         open = function(key, stage) if stage > 3 then nav("album",key); showStory(key) else startGame(key) end end,
     })
 end
-showGuide = function()
+showGuide = function(scrollPosition)
     if busy or swiping or gameInputLocked then return end
     closeModal()
-    modal = Guide.open(canvas, mobile, function() closeModal(); render() end, { placeVersion = state.placeVersion, storageMode = state.storageMode, setPreference = setPreference, stage = activeGame and activeGame.stage, remixId = activeGame and activeGame.remixId, availableHeight = height })
-    modalRebuild = function() showGuide() end
+    modal = Guide.open(canvas, mobile, function() closeModal(); render() end, {
+        placeVersion=state.placeVersion,storageMode=state.storageMode,setPreference=setPreference,
+        stage=activeGame and activeGame.stage,remixId=activeGame and activeGame.remixId,
+        availableHeight=height,availableWidth=UI.availableWidth,scrollPosition=scrollPosition,
+        scrolled=function(position)scrollPosition=position end,
+        ideas=not activeGame and function()
+            if busy or swiping or gameInputLocked or activeGame then return end
+            closeModal();showIdeas()
+        end or nil,
+    })
+    modalRebuild = function() showGuide(scrollPosition) end
 end
 actions.guide = showGuide
 local function renderAlbum()
