@@ -25,10 +25,11 @@ test("Album keeps larger text, passport, goal and scroll area separate on compac
         local remix=require("../src/shared/DateRemix")
         local icons=f.module("src/client/ToyIcons.luau")
         local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=remix,Icons=icons})
-        local album=f.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty={},Sticker=sticker})
-        local photo={key=Catalog[1].id..":cosmic",characterId=Catalog[1].id,variantId="cosmic",locationId="cafe",scores={},remixScores={["cafe:long"]=1},pinnedSouvenir="cafe:long"}
-        local opened
-        album.render(body,{album={photo}},l.mobile,1,{mount=function() end,open=function(key)opened=key end})
+        local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
+        local album=f.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty={},Sticker=sticker,PhotoFrame=frame})
+        local photo={key=Catalog[1].id..":cosmic",characterId=Catalog[1].id,variantId="cosmic",locationId="cafe",scores={['1']=1,['2']=1,['3']=1},remixScores={["cafe:long"]=1},pinnedSouvenir="cafe:long",photoPose="dance",photoFrame="perfect"}
+        local opened,scene
+        album.render(body,{album={photo}},l.mobile,1,{mount=function(_,_,_,options)scene=options end,open=function(key)opened=key end})
         local title,description,counts,grid=rect(body.Title,bodyW,bodyH),rect(body.Description,bodyW,bodyH),rect(body.Count_classic,bodyW,bodyH),rect(body.AlbumGrid,bodyW,bodyH)
         assert(title.y+title.h<=description.y and description.y+description.h<=counts.y and counts.y+counts.h<grid.y)
         assert(grid.h>100 and grid.y+grid.h<=bodyH)
@@ -46,6 +47,7 @@ test("Album keeps larger text, passport, goal and scroll area separate on compac
         local art=rect(photoNode.Photo,w,h);local pinned=rect(photoNode.Photo.PinnedSouvenir,art.w,art.h)
         assert(pinned.x>=0 and pinned.y>=0 and pinned.x+pinned.w<=art.w and pinned.y+pinned.h<=art.h)
         assert(photoNode.Photo.PinnedSouvenir:GetAttribute("SouvenirId")=="cafe:long")
+        assert(scene.photoPose=="dance" and photoNode.Photo.PhotoFrame:GetAttribute("FrameId")=="perfect")
         assert(body.Description.Text:find("Сувениров: 1",1,true))
         photoNode.OpenStory.action();assert(opened==photo.key)
     end

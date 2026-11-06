@@ -22,7 +22,7 @@ local function section(text, first, last)
 end
 local function fixture(width, height)
     local logical = Screen.resolve(width, height - 58, true)
-    local f = { logical = logical, replays = {}, again = 0, back = 0, disposed = 0 }
+    local f = { logical = logical, replays = {}, again = 0, back = 0, disposed = 0, edits = 0 }
     local function node(class, props, parent)
         local value = { ClassName = class, Parent = parent, children = {}, attributes = {} }
         for key, field in props do value[key] = field end
@@ -61,10 +61,10 @@ local function fixture(width, height)
     end
     local bookFirst = assert(source:find("local C = UI.colors", 1, true))
     local book = luau.load(source:sub(bookFirst), { environment = {
-        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons, Sticker = {mount=function() end},
+        UI = ui, Collection = Collection, Locations = Locations, Remix = Remix, Album = album, Icons = icons, Sticker = {mount=function() end}, PhotoFrame = {mount=function()end},
         Color3 = roblox.Color3, UDim2 = roblox.UDim2, Enum = enum,
     } })()
-    f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true },
+    f.photo = { locationId = "cafe", avatarUserId = 42, avatarSnapshot = { saved = true }, photoPose = "heart",
         scores = { ["1"] = 1, ["2"] = 1, ["3"] = 1 }, visitedLocations = { cafe = true } }
     f.controller = book.mount(node("Frame", { Name = "Overlay" }), { name = "Glorbo Fruttodrillo", personality = "nature" },
         { label = "Золотой", color = { 1, 1, 0 } }, f.photo, {
@@ -72,6 +72,7 @@ local function fixture(width, height)
         userId = 1, mount = function(_, options) f.scene = options; return { dispose = function() f.disposed += 1 end } end,
         replay = function(stage) table.insert(f.replays, stage) end,
         dateAgain = function() f.again += 1 end, back = function() f.back += 1 end,
+        editPhoto = function() f.edits += 1 end,
     })
     return f
 end
@@ -118,9 +119,10 @@ end)
 test("Compact book preserves saved photo identity and each action", function()
     local f = fixture(280,320); local box = f.controller.frame
     for i = 1, 3 do box["ReplayStage_" .. i].action() end
-    box.DateAgain.action(); box.CloseStory.action(); f.controller.dispose(); f.controller.dispose()
+    box.DateAgain.action(); box.CloseStory.action(); box.TogetherPostcard.EditPhoto.action(); f.controller.dispose(); f.controller.dispose()
     assert(f.replays[1] == 1 and f.replays[2] == 2 and f.replays[3] == 3 and f.again == 1 and f.back == 1)
     assert(f.scene.locationId == "cafe" and f.scene.userId == 42 and f.scene.avatarSnapshot == f.photo.avatarSnapshot and f.disposed == 1)
+    assert(f.scene.photoPose == "heart" and f.edits == 1)
 end)
 local passed = 0;for _, record in tests do if record.passed then passed += 1 end end
 fs.writeFile("prototype/evidence/story-book-tests.json", serde.encode("json", { passed = passed, failed = #tests-passed, total = #tests,

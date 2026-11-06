@@ -28,7 +28,11 @@ Dates now wait for a ready button after a short rules card. Retrying a lost star
 Round results scroll on compact screens while actions remain accessible; text and
 photo spacing adapt to the window and preserve the reading position.
 
-334 offline checks and both source builds pass. New UI geometry and actions are
+The photo booth previews four static poses and three frames earned through story
+progress: all venues, three perfect stages, or all six souvenirs. Changes save only
+when requested and preserve the avatar, photo location, records, and sticker.
+
+346 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 

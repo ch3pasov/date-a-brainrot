@@ -29,6 +29,7 @@ local ResultCard = require(script.Parent.ResultCard)
 local StoryBook = require(script.Parent.StoryBook)
 local MatchLetter = require(script.Parent.MatchLetter)
 local RemixBoard = require(script.Parent.RemixBoard)
+local PhotoBooth = require(script.Parent.PhotoBooth)
 local net = ReplicatedStorage:WaitForChild("BrainrotNet")
 local request = net:WaitForChild("Request")
 local changed = net:WaitForChild("Changed")
@@ -57,7 +58,7 @@ local actions = {}
 local profileReady, startupRunning, lastLoadError = false, false, nil
 local storageStatus = { state = "loading" }
 local beginLoad, renderLoadScreen
-local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult, showRemixes
+local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult, showRemixes, showPhotoStudio
 local mobile = false
 local width, height = 1200, 760
 local playerGui = player:WaitForChild("PlayerGui")
@@ -147,6 +148,7 @@ end
 local errors = {
     already_swiped = "Ты уже свайпнул этот вариант.", too_fast = "Дай сигналу немного времени.",
     ready_first = "Нажми «Начать», когда будешь готов.",
+    invalid_photo_style = "Не удалось выбрать эту позу или рамку.", photo_frame_locked = "Эта рамка ещё не открыта в вашей истории.",
     loading = "Ещё загружаем коллекцию…", busy = "Секунду…",
     load_failed = "Не удалось загрузить историю. Попробуй ещё раз.",
     profile_in_use = "Предыдущая сессия ещё сохраняет историю. Подожди немного.",
@@ -566,11 +568,35 @@ showStory = function(key)
         mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth, userId = state.playerUserId,
         mount = function(art, options) return mount(art, character.id, variant.id, options) end,
         back = closeModal,
+        editPhoto = function() showPhotoStudio(key) end,
         replay = function(stage) closeModal(); startGame(key, stage) end,
         dateAgain = function() closeModal(); startGame(key, 3) end,
         remixes = function() showRemixes(key) end,
     })
     if not restoringModal then Feedback.pop(modalViewer.frame, .93) end
+end
+showPhotoStudio = function(key, selection)
+    local photo
+    for _,item in state.album do if item.key==key then photo=item;break end end
+    if not photo then return end
+    local character,variant=Logic.character(photo.characterId),Logic.variant(photo.variantId)
+    closeModal();modalRebuild=function()showPhotoStudio(key,selection)end
+    modal=UI.overlay(canvas,"PhotoBoothOverlay",.04)
+    modalViewer=PhotoBooth.mount(modal,photo,{
+        mobile=mobile,availableHeight=height,availableWidth=UI.availableWidth,selection=selection,
+        mount=function(art,options)return mount(art,character.id,variant.id,options)end,
+        changed=function(value)selection=value end,
+        back=function()if not busy then showStory(key)end end,
+        save=function(poseId,frameId)
+            if busy then return end
+            modalViewer.setSaving(true)
+            local response=rpc("stylePhoto",{key=key,poseId=poseId,frameId=frameId})
+            if response then showStory(key);toast("Фото обновлено ♥",C.panel)
+            elseif modalViewer and modalViewer.setSaving then modalViewer.setSaving(false) end
+        end,
+    })
+    modalViewer.setSaving(busy)
+    if not restoringModal then Feedback.pop(modalViewer.frame,.96) end
 end
 showRemixes = function(key, scrollPosition)
     local photo

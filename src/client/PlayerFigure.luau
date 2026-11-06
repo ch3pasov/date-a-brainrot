@@ -152,10 +152,12 @@ function Figure.mount(world, userId, snapshot, frame)
         end
         if root then solveRig(controller.joints, root, jointPose, 0)
         else
-            local arm = controller.model:FindFirstChild("Right Arm")
-            if arm then
-                local rest = rootFrame * controller.bases[arm]
-                arm.CFrame = gesture == "wave" and rest * CFrame.new(0, .8, 0) * PlayerPose.joint("wave", "RightShoulder", phase, false) * CFrame.new(0, -.8, 0) or rest
+            for _,side in {{"Right Arm","RightShoulder"},{"Left Arm","LeftShoulder"}} do
+                local arm = controller.model:FindFirstChild(side[1])
+                if arm then
+                    local rest = rootFrame * controller.bases[arm]
+                    arm.CFrame = rest * CFrame.new(0,.8,0) * PlayerPose.joint(gesture,side[2],phase,false) * CFrame.new(0,-.8,0)
+                end
             end
         end
         lastPosePhase, lastPoseGesture, lastPoseModel = phase, gesture, controller.model

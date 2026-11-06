@@ -4,6 +4,7 @@ local Locations = require(Shared.Locations)
 local Album = require(script.Parent.Album)
 local RemixResult = require(script.Parent.RemixResult)
 local Sticker = require(script.Parent.SouvenirSticker)
+local PhotoFrame = require(script.Parent.PhotoFrame)
 local UI = require(script.Parent.UI)
 local C = UI.colors
 local Result = {}
@@ -59,7 +60,8 @@ function Result.mount(parent, result, options)
         UI.stroke(photo,C.ink).Thickness=2
         local art=UI.frame(photo,"ResultSelfie",UDim2.fromOffset(8,8),UDim2.new(1,-16,0,artH),C.aqua,1)
         options.mount(art,{modal=true,scene=true,photo=true,pair=true,locationId=locationId,
-            userId=options.photo and options.photo.avatarUserId,avatarSnapshot=options.photo and options.photo.avatarSnapshot})
+            userId=options.photo and options.photo.avatarUserId,avatarSnapshot=options.photo and options.photo.avatarSnapshot,photoPose=options.photo and options.photo.photoPose})
+        PhotoFrame.mount(art,options.photo)
         Sticker.mount(art,options.photo)
         UI.label(photo,"PhotoCaption",caption,UDim2.fromOffset(12,artH+18),UDim2.new(1,-24,0,captionH),captionFont,C.pink,true).TextXAlignment=Enum.TextXAlignment.Center
         local tape=UI.frame(photo,"PhotoTape",UDim2.new(.5,-42,0,-7),UDim2.fromOffset(84,18),C.yellow,1)

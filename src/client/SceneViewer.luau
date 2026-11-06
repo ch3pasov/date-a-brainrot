@@ -5,6 +5,7 @@ local ContentProvider = game:GetService("ContentProvider")
 local Locations = require(ReplicatedStorage:WaitForChild("Shared").Locations)
 local DateCollection = require(ReplicatedStorage.Shared.DateCollection)
 local DateItemLayout = require(ReplicatedStorage.Shared.DateItemLayout)
+local PhotoStyle = require(ReplicatedStorage.Shared.PhotoStyle)
 local Figure = require(script.Parent.PlayerFigure)
 local Feedback = require(script.Parent.Feedback)
 local PicnicPark = require(script.Parent.PicnicPark)
@@ -130,6 +131,7 @@ function Scene.mount(parent, character, variant, options)
     local decor = scenery(world, id)
     local camera = Instance.new("Camera"); camera.Name = "SceneCamera"; camera.FieldOfView = options.photo and 42 or 39; camera.Parent = viewport; viewport.CurrentCamera = camera
     local pair = options.pair or options.photo
+    local photoPose = PhotoStyle.pose(options.photoPose) or PhotoStyle.poses[1]
     local model, npcBase, npcHeight, npcWidth, npcDepth, npcShadow, playerShadow
     local loadingDots = {}
     local loadingLabel
@@ -360,7 +362,8 @@ function Scene.mount(parent, character, variant, options)
         if not onScreen then return end
         for i, dot in loadingDots do dot.Position = Vector3.new((pair and 1.8 or 0) + (i - 2) * .45, 2.2 + math.sin(now * 4 + i) * .12, 0) end
         if options.photo then
-            if figure and figure.model ~= lastPhotoModel then figure.pose("idle", 0); lastPhotoModel = figure.model end
+            updateNpcPose(photoPose.gesture,photoPose.phase)
+            if figure and figure.model ~= lastPhotoModel then figure.pose(photoPose.gesture,photoPose.phase); lastPhotoModel = figure.model end
             cameraUpdate(); return
         end
         perspective += ((Feedback.motionEnabled and targetPerspective or 0) - perspective) * math.min(dt * 12, 1); cameraUpdate()
@@ -386,6 +389,14 @@ function Scene.mount(parent, character, variant, options)
     end
     viewport.Destroying:Connect(function() dispose(true) end)
     local controller = { viewport = viewport, world = world, model = model, player = figure, items = items, collection = collection, tracks = {}, dispose = dispose }
+    function controller.setPhotoPose(id)
+        local pose=PhotoStyle.pose(id)
+        if not alive or not options.photo or not pose then return false end
+        photoPose=pose;lastPhotoModel=nil
+        viewport:SetAttribute("PhotoPose",pose.id)
+        return true
+    end
+    if options.photo then viewport:SetAttribute("PhotoPose",photoPose.id) end
     function controller.setCollected(state, animateAttempt)
         if not alive or not collection then return end
         local entries, retained = DateCollection.entries(state), {}

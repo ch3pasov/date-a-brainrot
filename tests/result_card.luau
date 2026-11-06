@@ -16,11 +16,12 @@ local function fixture(width,height,stage,passed,practice)
     local f=Harness.new(width,height);f.scenes={};f.back=0;f.next=0
     local icons=f.module("src/client/ToyIcons.luau")
     local sticker=f.module("src/client/SouvenirSticker.luau",{Remix=Remix,Icons=icons})
+    local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
     local album=f.module("src/client/Album.luau",{Collection=Collection,Locations=Locations})
-    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Album=album,Sticker=sticker})
+    local result=f.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Album=album,Sticker=sticker,PhotoFrame=frame})
     local options=f.options();options.stage=stage
     options.character={name="Trippi Troppi Troppa Trippa",personality="food"}
-    options.photo={locationId="rooftop",visitedLocations={park=true,cafe=true},avatarUserId=42,avatarSnapshot={saved=true},remixScores={["park:long"]=1},pinnedSouvenir="park:long"}
+    options.photo={locationId="rooftop",visitedLocations={park=true,cafe=true},avatarUserId=42,avatarSnapshot={saved=true},remixScores={["park:long"]=1},pinnedSouvenir="park:long",photoPose="heart",photoFrame="travel"}
     options.mount=function(_,settings)table.insert(f.scenes,settings)end
     options.back=function()f.back+=1 end;options.continue=function()f.next+=1 end
     options.scrollPosition=roblox.Vector2.new(0,120);options.scrolled=function(position)f.scrolled=position end
@@ -69,6 +70,7 @@ test("Selfie results retain the saved avatar, venue, sticker and passport after 
     assert(#f.scenes==1 and f.scenes[1].locationId=="rooftop" and f.scenes[1].userId==42)
     assert(f.scenes[1].avatarSnapshot==f.photo.avatarSnapshot and f.scenes[1].pair and f.scenes[1].photo)
     local art=content.ResultPhoto.ResultSelfie;local sticker=art.PinnedSouvenir
+    assert(f.scenes[1].photoPose=="heart" and art.PhotoFrame:GetAttribute("FrameId")=="travel")
     assert(sticker:GetAttribute("SouvenirId")=="park:long")
     local bounds=rect(sticker,content.ResultPhoto.Size.X.Offset-16,art.Size.Y.Offset)
     assert(bounds.x>=0 and bounds.y>=0 and bounds.y+bounds.h<=art.Size.Y.Offset)

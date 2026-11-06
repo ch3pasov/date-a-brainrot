@@ -15,6 +15,10 @@ function Harness.new(width, height)
         fields.SetAttribute = function(_, name, value) fields.attributes[name] = value end
         fields.GetAttribute = function(_, name) return fields.attributes[name] end
         fields.Activated = {Connect = function(_, callback) fields.action = callback end}
+        fields.Destroy = function()
+            if fields.Parent then fields.Parent.children[fields.Name]=nil end
+            fields.Parent=nil;fields.destroyed=true
+        end
         object = setmetatable({}, {
             __index = function(_, key) return fields[key] or fields.children[key] end,
             __newindex = function(_, key, value)

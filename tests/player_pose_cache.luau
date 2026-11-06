@@ -19,20 +19,21 @@ local function fixture(fallback)
     local f = { writes = 0, solves = 0, poses = {} }
     function f.newModel()
         local model = { writes = 0, root = not fallback and {} or nil, frame = roblox.CFrame.new() }
-        if fallback then model.arm = { CFrame = roblox.CFrame.new(1.4, 2.8, 0) } end
+        if fallback then model.arm = { CFrame = roblox.CFrame.new(1.4, 2.8, 0) };model.leftArm={CFrame=roblox.CFrame.new(-1.4,2.8,0)} end
         function model:PivotTo(frame)
             if self.arm then self.arm.CFrame = frame * self.frame:Inverse() * self.arm.CFrame end
+            if self.leftArm then self.leftArm.CFrame=frame*self.frame:Inverse()*self.leftArm.CFrame end
             self.writes += 1; self.frame = frame; f.writes += 1
         end
         function model:FindFirstChild(name)
-            return name == "HumanoidRootPart" and self.root or name == "Right Arm" and self.arm or nil
+            return name == "HumanoidRootPart" and self.root or name == "Right Arm" and self.arm or name=="Left Arm" and self.leftArm or nil
         end
         return model
     end
     f.model = f.newModel()
     f.controller = { model = f.model, frame = roblox.CFrame.new(), offset = roblox.CFrame.new(0, 1, 0),
         joints = {}, bases = {}, articulatedWave = not fallback }
-    if fallback then f.controller.bases[f.model.arm] = f.model.arm.CFrame end
+    if fallback then f.controller.bases[f.model.arm] = f.model.arm.CFrame;f.controller.bases[f.model.leftArm]=f.model.leftArm.CFrame end
     f.api = luau.load("local alive, controller = true, initial\n" .. source:sub(first, last - 1) .. [[
         return { pose = controller.pose, dispose = function() alive = false end }
     ]], { environment = {
@@ -94,14 +95,23 @@ test("The loading figure returns its arm to rest after a greeting", function()
     f.controller.frame = roblox.CFrame.new(3, 0, -2); f.api.pose("idle", .3)
     assert(closeFrame(f.model.arm.CFrame, f.model.frame * f.controller.bases[f.model.arm]))
 end)
-test("Changing the loading figure gesture cannot retain an earlier wave", function()
+test("The loading figure switches both arms from a wave to heart/dance and back to neutral", function()
     for _, gesture in { "heart", "dance" } do
         local f = fixture(true); f.api.pose("wave", .2); f.api.pose(gesture, .4)
-        assert(closeFrame(f.model.arm.CFrame, f.model.frame * f.controller.bases[f.model.arm]), gesture)
+        for _,side in {{f.model.arm,"RightShoulder"},{f.model.leftArm,"LeftShoulder"}} do
+            local arm,name=side[1],side[2]
+            local expected=f.model.frame*f.controller.bases[arm]*roblox.CFrame.new(0,.8,0)
+                *PlayerPose.joint(gesture,name,.4,false)*roblox.CFrame.new(0,-.8,0)
+            assert(closeFrame(arm.CFrame,expected) and not closeFrame(arm.CFrame,f.model.frame*f.controller.bases[arm]),gesture)
+        end
         f.api.pose("wave", .5)
         local expected = f.model.frame * f.controller.bases[f.model.arm] * roblox.CFrame.new(0, .8, 0)
             * PlayerPose.joint("wave", "RightShoulder", .5, false) * roblox.CFrame.new(0, -.8, 0)
         assert(closeFrame(f.model.arm.CFrame, expected), "Existing low-arm wave motion must be preserved")
+        assert(closeFrame(f.model.leftArm.CFrame,f.model.frame*f.controller.bases[f.model.leftArm]))
+        f.api.pose("idle",0)
+        assert(closeFrame(f.model.arm.CFrame,f.model.frame*f.controller.bases[f.model.arm]))
+        assert(closeFrame(f.model.leftArm.CFrame,f.model.frame*f.controller.bases[f.model.leftArm]))
     end
 end)
 local passed = 0; for _, record in tests do if record.passed then passed += 1 end end

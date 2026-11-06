@@ -6,6 +6,7 @@ local UI = require(script.Parent.UI)
 local Icons = require(script.Parent.ToyIcons)
 local Album = require(script.Parent.Album)
 local Sticker = require(script.Parent.SouvenirSticker)
+local PhotoFrame = require(script.Parent.PhotoFrame)
 local C = UI.colors
 local Book = {}
 
@@ -56,9 +57,17 @@ function Book.mount(parent, character, variant, photo, options)
     local viewer = options.mount(art, {
         modal = true, scene = true, photo = true, pair = true,
         locationId = photo.locationId or "park", userId = photo.avatarUserId or options.userId,
-        avatarSnapshot = photo.avatarSnapshot,
+        avatarSnapshot = photo.avatarSnapshot, photoPose = photo.photoPose,
     })
     Sticker.mount(art, photo)
+    PhotoFrame.mount(art,photo)
+    if options.editPhoto then
+        local captionFont=UI.readableSize(12,10)
+        local badge=UI.pill(art,"PhotoStudioHint","ПОЗА И РАМКА →",UDim2.fromOffset(8,8),math.max(180,captionFont*9),C.yellow)
+        badge.Size=UDim2.fromOffset(badge.Size.X.Offset,math.ceil(captionFont*1.4));badge.Label.TextSize=captionFont;badge.ZIndex=5
+        local edit=UI.new("TextButton",{Name="EditPhoto",Text="",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ZIndex=6},postcard)
+        edit.Activated:Connect(options.editPhoto)
+    end
     center(postcard, "PhotoLocation", Locations.get(photo.locationId).name, UDim2.new(0, 12, 1, -captionH - 8), UDim2.new(1, -24, 0, captionH), UI.readableSize(mobile and 16 or 20), C.ink, true)
     local tape = UI.frame(postcard, "Tape", UDim2.new(.5, -42, 0, -8), UDim2.fromOffset(84, 18), C.yellow, 1)
     tape.Rotation = -4; tape.BackgroundTransparency = .18; tape.ZIndex = 3

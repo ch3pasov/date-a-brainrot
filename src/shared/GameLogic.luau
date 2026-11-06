@@ -5,6 +5,7 @@ local Catalog
 local Locations
 local Preferences
 local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
+local PhotoStyle = if script then require(script.Parent.PhotoStyle) else require("./PhotoStyle")
 if script then
     Config = require(script.Parent.Config)
     Catalog = require(script.Parent.Catalog)
@@ -96,6 +97,7 @@ function Logic.validSavedProfile(data)
                     if not validVisitedLocations(entry.visitedLocations) then return false end
                     if not Remix.validScores(entry.remixScores) then return false end
                     if entry.pinnedSouvenir ~= nil and not Remix.sticker(entry) then return false end
+                    if not PhotoStyle.valid(entry) then return false end
                     if entry.avatarUserId ~= nil and (not finite(entry.avatarUserId) or entry.avatarUserId % 1 ~= 0) then return false end
                     if entry.avatarSnapshot ~= nil and (type(entry.avatarSnapshot) ~= "string" or #entry.avatarSnapshot > 64000) then return false end
                 end
@@ -258,6 +260,18 @@ function Logic.pinSouvenir(profile, key, souvenirId)
         if not photo.remixScores or not Remix.passed(souvenir.remixId, photo.remixScores[souvenirId]) then return false, "souvenir_locked" end
     end
     if photo.pinnedSouvenir ~= souvenirId then photo.pinnedSouvenir = souvenirId; profile.revision += 1 end
+    return true
+end
+function Logic.stylePhoto(profile, key, poseId, frameId)
+    local match, photo = profile.matches[key], profile.album[key]
+    if not match or match.stage ~= 4 or not photo then return false, "story_not_complete" end
+    if not PhotoStyle.pose(poseId) or not PhotoStyle.frame(frameId) then return false, "invalid_photo_style" end
+    if not PhotoStyle.unlocked(photo,frameId) then return false, "photo_frame_locked" end
+    if (photo.photoPose or "idle")==poseId and (photo.photoFrame or "classic")==frameId then return true end
+    photo.photoPose = nil; photo.photoFrame = nil
+    if poseId~="idle" then photo.photoPose=poseId end
+    if frameId~="classic" then photo.photoFrame=frameId end
+    profile.revision+=1
     return true
 end
 function Logic.publicSnapshot(profile, now)
