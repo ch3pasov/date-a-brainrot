@@ -28,11 +28,15 @@ test("Album keeps larger text, passport, goal and scroll area separate on compac
         local frame=f.module("src/client/PhotoFrame.luau",{Icons=icons})
         local album=f.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty={},Sticker=sticker,PhotoFrame=frame})
         local photo={key=Catalog[1].id..":cosmic",characterId=Catalog[1].id,variantId="cosmic",locationId="cafe",scores={['1']=1,['2']=1,['3']=1},remixScores={["cafe:long"]=1},pinnedSouvenir="cafe:long",photoPose="dance",photoFrame="perfect"}
-        local opened,scene
-        album.render(body,{album={photo}},l.mobile,1,{mount=function(_,_,_,options)scene=options end,open=function(key)opened=key end})
+        local opened,scene,ideas
+        album.render(body,{album={photo}},l.mobile,1,{mount=function(_,_,_,options)scene=options end,open=function(key)opened=key end,ideas=function()ideas=true end})
         local title,description,counts,grid=rect(body.Title,bodyW,bodyH),rect(body.Description,bodyW,bodyH),rect(body.Count_classic,bodyW,bodyH),rect(body.AlbumGrid,bodyW,bodyH)
         assert(title.y+title.h<=description.y and description.y+description.h<=counts.y and counts.y+counts.h<grid.y)
         assert(grid.h>100 and grid.y+grid.h<=bodyH)
+        local button=rect(body.JourneyIdeas,bodyW,bodyH)
+        assert(description.x+description.w+8<=button.x and button.y+button.h<=counts.y)
+        assert(button.w*l.scale>=44 and button.h*l.scale>=44)
+        body.JourneyIdeas.action();assert(ideas)
         local photoNode=body.AlbumGrid.Selfie_1
         local cell=body.AlbumGrid.UIGridLayout.CellSize
         local w=grid.w*cell.X.Scale+cell.X.Offset;local h=cell.Y.Offset

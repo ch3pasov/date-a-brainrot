@@ -30,6 +30,8 @@ local StoryBook = require(script.Parent.StoryBook)
 local MatchLetter = require(script.Parent.MatchLetter)
 local RemixBoard = require(script.Parent.RemixBoard)
 local PhotoBooth = require(script.Parent.PhotoBooth)
+local JourneyIdeas = require(Shared.JourneyIdeas)
+local JourneyBoard = require(script.Parent.JourneyBoard)
 local net = ReplicatedStorage:WaitForChild("BrainrotNet")
 local request = net:WaitForChild("Request")
 local changed = net:WaitForChild("Changed")
@@ -58,7 +60,7 @@ local actions = {}
 local profileReady, startupRunning, lastLoadError = false, false, nil
 local storageStatus = { state = "loading" }
 local beginLoad, renderLoadScreen
-local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult, showRemixes, showPhotoStudio
+local render, renderGame, refresh, startGame, showMatch, showStory, showReturn, showGuide, showResult, showRemixes, showPhotoStudio, showIdeas
 local mobile = false
 local width, height = 1200, 760
 local playerGui = player:WaitForChild("PlayerGui")
@@ -554,7 +556,29 @@ local function renderAlbum()
         matches = function() nav("matches") end,
         page = function(value) albumPage = value; render() end,
         open = function(key) showStory(key) end,
+        ideas = function() showIdeas() end,
     })
+end
+showIdeas = function(scrollPosition)
+    closeModal();modalRebuild=function()showIdeas(scrollPosition)end
+    modal=UI.overlay(canvas,"JourneyOverlay",.04)
+    modalViewer=JourneyBoard.mount(modal,JourneyIdeas.build(state),{
+        mobile=mobile,availableHeight=height,availableWidth=UI.availableWidth,scrollPosition=scrollPosition,
+        scrolled=function(position)scrollPosition=position end,
+        mount=mount,back=closeModal,
+        choose=function(idea)
+            if busy then return end
+            closeModal()
+            if idea.kind=="continue" then startGame(idea.key)
+            elseif idea.kind=="travel" then startGame(idea.key,3,idea.locationId)
+            elseif idea.kind=="remix" then startGame(idea.key,3,idea.locationId,idea.remixId)
+            elseif idea.kind=="perfect" then startGame(idea.key,idea.practiceStage)
+            elseif idea.kind=="photo" then showPhotoStudio(idea.key)
+            elseif idea.kind=="discover" then nav("feed")
+            else nav("matches") end
+        end,
+    })
+    if not restoringModal then Feedback.pop(modalViewer.frame,.94)end
 end
 showStory = function(key)
     local photo

@@ -32,7 +32,11 @@ The photo booth previews four static poses and three frames earned through story
 progress: all venues, three perfect stages, or all six souvenirs. Changes save only
 when requested and preserve the avatar, photo location, records, and sticker.
 
-346 offline checks and both source builds pass. New UI geometry and actions are
+The album Ideas board suggests up to three next activities from existing progress,
+with direct routes to unfinished stories, new venues, missing souvenirs, perfect
+scores and the photo booth. Goals have no expiry or separate currency.
+
+352 offline checks and both source builds pass. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.
 

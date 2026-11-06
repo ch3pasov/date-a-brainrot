@@ -37,9 +37,16 @@ function Album.render(body, state, mobile, page, callbacks)
     local stats = Collection.stats(state.album)
     local titleFont = UI.readableSize(mobile and 28 or 30)
     local titleH = math.max(mobile and 76 or 47, math.ceil(titleFont * (mobile and 2.6 or 1.3)))
-    local descriptionH = math.max(48, math.ceil(UI.readableSize(16, 10) * 2.6))
+    local ideasW = callbacks.ideas and math.max(150,math.ceil(UI.readableSize(17)*5.5)) or 0
+    local description = stats.total > 0 and ("Историй: " .. stats.total .. "  ·  Сувениров: " .. stats.souvenirs) or "Три маленьких шага — ваша первая история."
+    local descriptionW = (mobile and 436 or body.Size.X.Offset)-10-(ideasW>0 and ideasW+12 or 0)
+    local descriptionH = math.max(48,UI.textHeight(description,UI.readableSize(16,10),descriptionW,false),callbacks.ideas and (UI.touchMinimum or 66) or 0)
     UI.label(body, "Title", mobile and "АЛЬБОМ\nСТРАННЫХ СВИДАНИЙ" or "АЛЬБОМ СТРАННЫХ СВИДАНИЙ", UDim2.fromOffset(5, 0), UDim2.new(1, -10, 0, titleH), titleFont, C.ink, true)
-    UI.label(body, "Description", stats.total > 0 and ("Историй: " .. stats.total .. "  ·  Сувениров: " .. stats.souvenirs) or "Три маленьких шага — ваша первая история.", UDim2.fromOffset(5, titleH + 4), UDim2.new(1, -10, 0, descriptionH), UI.readableSize(16, 10), C.muted)
+    UI.label(body, "Description", description, UDim2.fromOffset(5, titleH + 4), UDim2.fromOffset(descriptionW,descriptionH), UI.readableSize(16, 10), C.muted)
+    if callbacks.ideas then
+        local button=UI.button(body,"JourneyIdeas","Идеи →",UDim2.new(1,-ideasW-5,0,titleH+4),UDim2.fromOffset(ideasW,descriptionH),C.yellow,callbacks.ideas)
+        button.TextSize=UI.readableSize(17)
+    end
     local countersY = titleH + descriptionH + 8
     if #state.album == 0 then
         Empty.mount(body, {
