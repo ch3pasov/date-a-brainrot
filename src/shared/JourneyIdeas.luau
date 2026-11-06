@@ -57,15 +57,8 @@ function Ideas.build(state,offset)
         return count<6 and count or nil
     end)
     if souvenir then
-        local locationId,remixId
-        for _,location in Locations.list do
-            for _,mode in Remix.list do
-                if not Remix.passed(mode.id,souvenir.remixScores and souvenir.remixScores[Remix.key(location.id,mode.id)]) then
-                    locationId=location.id;remixId=mode.id;break
-                end
-            end
-            if locationId then break end
-        end
+        local nextReward=Remix.nextMissing(souvenir)
+        local locationId,remixId=nextReward.locationId,nextReward.remixId
         local reward=Remix.souvenir(locationId,remixId)
         local item=idea("remix",souvenir,"Новый сувенир",reward.name.." · "..Locations.get(locationId).short..". "..Remix.get(remixId).rule,Remix.progress(souvenir).collected,6,"За сувениром →")
         item.locationId=locationId;item.remixId=remixId;table.insert(out,item)

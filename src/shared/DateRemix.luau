@@ -17,12 +17,14 @@ local souvenirs = {
         reverse = { name = "Подарок из будущего", caption = "Вечер ещё не начался, а воспоминание уже здесь.", shape = "gift" } },
 }
 local byStamp = {}
+local ordered = {}
 for _, location in Locations.list do
     for _, mode in Remix.list do
         local souvenir = souvenirs[location.id][mode.id]
         local key = location.id .. ":" .. mode.id
         byStamp[key] = { key = key, locationId = location.id, remixId = mode.id,
             name = souvenir.name, caption = souvenir.caption, shape = souvenir.shape }
+        table.insert(ordered,byStamp[key])
     end
 end
 function Remix.get(id) return type(id) == "string" and byId[id] or nil end
@@ -63,6 +65,26 @@ function Remix.progress(photo)
         end
     end
     return { collected = collected, perfect = perfect, total = #Locations.list * #Remix.list }
+end
+function Remix.nextMissing(photo,afterKey)
+    if not photo then return nil end
+    local start=0
+    for i,souvenir in ordered do if souvenir.key==afterKey then start=i;break end end
+    for offset=1,#ordered do
+        local souvenir=ordered[(start+offset-1)%#ordered+1]
+        if not Remix.passed(souvenir.remixId,photo.remixScores and photo.remixScores[souvenir.key]) then return souvenir end
+    end
+    return nil
+end
+function Remix.followUp(photo,result)
+    if not result.passed or not photo then
+        return {kind="retry",locationId=result.locationId,remixId=result.remixId,label="Ещё раз →"}
+    end
+    local nextReward=Remix.nextMissing(photo,Remix.key(result.locationId,result.remixId))
+    if nextReward then
+        return {kind="next",locationId=nextReward.locationId,remixId=nextReward.remixId,label="Дальше →",name=nextReward.name}
+    end
+    return {kind="photo",label="К фото →"}
 end
 function Remix.sequence(id, draw)
     local mode = assert(Remix.get(id), "Unknown date remix")

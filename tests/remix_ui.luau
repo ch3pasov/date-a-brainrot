@@ -120,6 +120,30 @@ test("Only earned souvenirs offer photo actions and the selected sticker can be 
         end
     end
 end)
+test("The result names the next souvenir, retries a failed round and sends a complete set to photos",function()
+    for _,screen in screens do for _,kind in {"retry","next","photo"}do
+        local f=fixture(screen[1],screen[2]);local options=f.options();local count=0
+        options.photo={remixScores={["cafe:long"]=1}};options.back=function()end;options.continue=function()count+=1 end
+        if kind=="photo"then
+            for _,place in Locations.list do for _,mode in Remix.list do options.photo.remixScores[Remix.key(place.id,mode.id)]=1 end end
+        end
+        local result=f.result.mount(f.root,{remixId="long",locationId="cafe",score=kind=="retry" and .5 or 1,best=1,passed=kind~="retry"},options)
+        local expected=({retry="Ещё раз →",next="Дальше →",photo="К фото →"})[kind]
+        assert(result.ResultContinue.Text==expected and count==0)
+        result.ResultContinue.action();assert(count==1)
+        local content=result.RemixResultContent
+        if kind=="retry"then assert(content.NextGoal==nil)
+        else
+            local note=rect(content.NextGoal,content.Size.X.Offset,content.Size.Y.Offset)
+            assert(note.y+note.h<=content.CanvasSize.Y.Offset)
+            assert(f.ui.textHeight(content.NextGoal.Text,content.NextGoal.TextSize,note.w,true)<=note.h)
+            if kind=="next"then assert(content.NextGoal.Text:find("Пончик времени",1,true))else assert(content.NextGoal.Text:find("Все 6",1,true))end
+        end
+        for _,button in {result.BackToMatches,result.ResultContinue}do
+            assert(button.TextWrapped and f.ui.textHeight(button.Text,button.TextSize,button.Size.X.Offset-8,true)<=button.Size.Y.Offset)
+        end
+    end end
+end)
 fs.writeFile("prototype/evidence/remix-ui-tests.json",serde.encode("json",{passed=#tests,tests=tests,
     scope="Production UI and icons with controlled instances; geometry/callbacks only, no Roblox font or visual playtest"},true))
 print("Passed " .. #tests .. " remix UI integration checks")

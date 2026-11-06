@@ -76,7 +76,11 @@ Video calls measure gesture labels and response text before laying out cameras.
 Short phones use the available width and put cameras side by side when needed.
 A confirmed wrong answer names the requested gesture and survives resizing.
 
-416 offline checks and both source builds pass. The full-catalog simulation covers
+Successful remixes offer the next missing souvenir and name its venue and mode.
+The completed set leads to a preview of its earned photo frame. Failed attempts
+still offer the same round, and the collection keeps every replay accessible.
+
+419 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have
 not been playtested for this update. The live version below is a separate release.

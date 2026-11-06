@@ -18,6 +18,7 @@ function Result.mount(parent, result, options)
     local souvenir = Remix.souvenir(result.locationId, result.remixId)
     local owned = Remix.passed(result.remixId, result.best)
     local progress = Remix.progress(options.photo)
+    local followUp=Remix.followUp(options.photo,result)
     local box = UI.frame(parent, "ResultDialog", UDim2.new(.5, -w / 2, .5, -h / 2), UDim2.fromOffset(w, h), C.panel, 4)
     box.ZIndex = 2
     local title = result.unlocked and "НОВЫЙ СУВЕНИР!" or (result.score == 1 and "ИДЕАЛЬНЫЙ РЕМИКС!" or (result.passed and "ЕСТЬ ОБЩИЙ ВАЙБ!" or "ПОПРОБУЕМ ЕЩЁ?"))
@@ -56,15 +57,20 @@ function Result.mount(parent, result, options)
     y += text("Rule", ("%s · %s\nНужно %d из %d. Ошибаться можно."):format(Locations.get(result.locationId).short, mode.name, mode.required, mode.total), y, 2, C.muted)+12
     local progressText = (owned and "✓ Сувенир в коллекции\n✓ Место отмечено в паспорте" or "Сувенир ждёт удачного раунда") .. ("\nСобрано %d / %d"):format(progress.collected, progress.total)
     y += text("CollectionProgress", progressText, y, 3, C.ink, true)+16
+    if followUp.kind=="next"then
+        y+=text("NextGoal","Дальше: "..followUp.name.."\n"..Locations.get(followUp.locationId).short.." · "..Remix.get(followUp.remixId).name,y,2,C.mint,true)+16
+    elseif followUp.kind=="photo"then
+        y+=text("NextGoal","Все 6 сувениров собраны!\nПримерим коллекционную рамку.",y,2,C.mint,true)+16
+    end
     local bottom = y
     bottom += DateReview.mount(scroll,result.recap,w-68,bottom)
     scroll.CanvasSize = UDim2.fromOffset(0, bottom)
     scroll.CanvasPosition = options.scrollPosition or Vector2.new(0, 0)
     if options.scrolled then scroll:GetPropertyChangedSignal("CanvasPosition"):Connect(function() options.scrolled(scroll.CanvasPosition) end) end
     local back = UI.button(box, "BackToMatches", "Сувениры", UDim2.fromOffset(24, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.card, options.back)
-    back.TextSize = UI.readableSize(17)
-    local again = UI.button(box, "ResultContinue", "Ещё раз →", UDim2.fromOffset(w / 2 + 6, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.mint, options.continue)
-    again.TextColor3 = C.panel; again.TextSize = UI.readableSize(17)
+    back.TextSize = UI.readableSize(17);back.TextWrapped=true
+    local again = UI.button(box, "ResultContinue", followUp.label, UDim2.fromOffset(w / 2 + 6, footerY), UDim2.fromOffset((w - 60) / 2, actionH), C.mint, options.continue)
+    again.TextColor3 = C.panel; again.TextSize = UI.readableSize(17);again.TextWrapped=true
     return box
 end
 return Result

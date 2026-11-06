@@ -21,6 +21,7 @@ local Feedback = require(script.Parent.Feedback)
 local Inbox = require(script.Parent.MatchInbox)
 local Album = require(script.Parent.Album)
 local Collection = require(Shared.Collection)
+local Remix = require(Shared.DateRemix)
 local Guide = require(script.Parent.Guide)
 local Locations = require(Shared.Locations)
 local Scene = require(script.Parent.SceneViewer)
@@ -743,6 +744,7 @@ showResult = function(result, key, completedStage, completedLocation, scrollPosi
     local character = match and Logic.character(match.characterId)
     local photo
     for _, item in state.album do if item.key == key then photo = item; break end end
+    local followUp=result.remixId and Remix.followUp(photo,result)
     local box = ResultCard.mount(overlay, result, {
         mobile = mobile, availableHeight = height, availableWidth = UI.availableWidth, stage = stage, character = character, photo = photo, locationId = completedLocation,
         scrollPosition = scrollPosition, scrolled = function(position) scrollPosition = position end,
@@ -752,7 +754,16 @@ showResult = function(result, key, completedStage, completedLocation, scrollPosi
             nav("album",key);showPhotoStudio(key,{frameId=frameId})
         end,
         back = function() closeModal(); if result.remixId then nav("album",key); showRemixes(key) elseif result.practice then nav("album",key); showStory(key) else nav("matches") end end,
-        continue = function() closeModal(); if result.remixId then startGame(key, 3, result.locationId, result.remixId) elseif result.practice then startGame(key, completedStage) elseif result.result == "album" then nav("album",key) else startGame(key) end end,
+        continue = function()
+            if busy then return end
+            closeModal()
+            if followUp then
+                if followUp.kind=="photo"then nav("album",key);showPhotoStudio(key,{frameId="souvenirs"})
+                else startGame(key,3,followUp.locationId,followUp.remixId)end
+            elseif result.practice then startGame(key,completedStage)
+            elseif result.result=="album"then nav("album",key)
+            else startGame(key)end
+        end,
     })
     if not restoringModal then
         Feedback.pop(box, .92); Feedback.play(result.passed and "success" or "miss")
