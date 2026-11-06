@@ -19,8 +19,15 @@ local function fixture(width, height)
 end
 local rect = Harness.rect
 local screens = {{240,320}, {280,320}, {320,370}, {320,480}, {390,650}, {1280,720}}
+local boardScreens=table.clone(screens);table.insert(boardScreens,{568,320})
+local function fits(f,node,w,h)
+    local r=rect(node,w,h)
+    local needed=f.ui.textHeight(node.Text,node.TextSize,r.w,node.Font=="bold")
+    assert(needed<=r.h,node.Name.." clips text")
+    assert(node.TextWrapped or needed<=node.TextSize*1.4,node.Name.." needs wrapping")
+end
 test("Remix board keeps rules, six playable cards and touch controls accessible on small screens", function()
-    for _, screen in screens do
+    for _, screen in boardScreens do
         local f = fixture(screen[1], screen[2]); local options = f.options(); local chosen, back = {}, 0
         options.play = function(location, mode) table.insert(chosen, location .. ":" .. mode) end
         options.back = function() back += 1 end
@@ -30,6 +37,7 @@ test("Remix board keeps rules, six playable cards and touch controls accessible 
         local title, progress, list, footer = rect(board.Title,w,h), rect(board.Progress,w,h), rect(board.RemixList,w,h), rect(board.CloseRemixes,w,h)
         assert(title.y+title.h <= progress.y and progress.y+progress.h <= list.y)
         assert(list.h > 100 and list.y+list.h+8 <= footer.y and footer.y+footer.h <= h)
+        for _,node in {board.Title,board.Progress,board.CloseRemixes}do fits(f,node,w,h)end
         local count = 0
         for _, card in board.RemixList.children do
             if card.ClassName ~= "Frame" then continue end
@@ -40,6 +48,7 @@ test("Remix board keeps rules, six playable cards and touch controls accessible 
             assert(place.y+place.h <= badge.y and badge.x+badge.w <= souvenir.x)
             assert(souvenir.y+souvenir.h <= rule.y and rule.y+rule.h <= best.y and best.y+best.h <= play.y)
             assert(play.w*f.logical.scale >= 44 and play.h*f.logical.scale >= 44 and play.y+play.h <= r.h)
+            for _,name in {"Place","Souvenir","Rule","Best","PlayRemix"}do fits(f,card[name],r.w,r.h)end
             card.PlayRemix.action()
         end
         board.CloseRemixes.action()
@@ -100,7 +109,7 @@ test("Long remix captions, passport messages and titles grow without clipping or
     end end end
 end)
 test("Only earned souvenirs offer photo actions and the selected sticker can be removed",function()
-    for _,screen in screens do
+    for _,screen in boardScreens do
         local f=fixture(screen[1],screen[2]);local options=f.options();local pins={}
         options.play=function() end;options.back=function() end
         options.pin=function(id)table.insert(pins,{id=id})end
@@ -117,6 +126,7 @@ test("Only earned souvenirs offer photo actions and the selected sticker can be 
             local play,pin=rect(card.PlayRemix,w,h),rect(card.PinSouvenir,w,h)
             assert(play.x+play.w+8<=pin.x and pin.x+pin.w<=w-10)
             assert(pin.w*f.logical.scale>=44 and pin.h*f.logical.scale>=44)
+            for _,name in {"Place","Souvenir","Rule","Best","PlayRemix","PinSouvenir"}do fits(f,card[name],w,h)end
         end
     end
 end)
