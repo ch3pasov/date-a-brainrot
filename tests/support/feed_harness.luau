@@ -8,6 +8,8 @@ local FeedLayout=require("../../src/shared/FeedLayout")
 local source=fs.readFile("src/client/App.client.luau")
 local first=assert(source:find("local function renderFeed()",1,true))
 local last=assert(source:find("local listPage, inboxFilter",first,true))
+local variantFirst=assert(source:find("local function setCardVariant(",1,true))
+local variantLast=assert(source:find("local function swipe(",variantFirst,true))
 local Feed={}
 function Feed.mount(h,character,variant,options)
     options=options or {}
@@ -27,12 +29,12 @@ function Feed.mount(h,character,variant,options)
     end
     local env=table.clone(h.environment)
     for k,v in {
-        initial={characterId=character.id,variantId=variant.id},state={swipes={},matches={},album={},feed={},pending=0,lastPass=options.lastPass},
+        initial={characterId=character.id,variantId=variant.id},state={swipes=options.swipes or {},matches={},album={},feed={},pending=0,lastPass=options.lastPass},
         Logic=Logic,Config=Config,Locations=Locations,FeedLayout=FeedLayout,UI=h.ui,C=h.ui.colors,
         canvas=canvas,body=body,width=l.width,height=l.height,mobile=l.mobile,scale={Scale=l.scale},
         mount=sceneMount,Scene={mount=sceneMount},Presentation={gestureIcon=h.module("src/client/ToyIcons.luau").gesture},
         actions={undoPass=function()events.undo+=1 end},swipe=function(value)table.insert(events.likes,value)end,
-        setCardVariant=function(value)table.insert(events.variants,value)end,
+        variantChosen=function(value)table.insert(events.variants,value)end,
         Feedback={pop=function()end,play=function()end},UserInputService={WindowFocusReleased=signal(),InputChanged=signal(),InputEnded=signal()},
         player={UserId=1},gui={SetAttribute=function()end},
     }do env[k]=v end
@@ -43,7 +45,8 @@ function Feed.mount(h,character,variant,options)
         local views,connections={},{}
         local previewLocationId="park"
         local busy,swiping,modal=false,false,nil
-    ]]..source:sub(first,last-1).."\nrenderFeed()",{environment=env})()
+        local function render()variantChosen(currentCard.variantId)end
+    ]]..source:sub(variantFirst,variantLast-1)..source:sub(first,last-1).."\nrenderFeed()",{environment=env})()
     return {frame=canvas,body=body,events=events}
 end
 return Feed

@@ -64,7 +64,24 @@ test("Readable feed controls still route only the explicit swipe, variant and un
         for _,v in Config.Variants do f.body.SwipeCard.Portrait["Variant_"..v.id].action()end
         if h.logical.mobile then controls.UndoPass.action()else f.body.FeedNotes.UndoPass.action()end
         assert(f.events.likes[1]==false and f.events.likes[2]==true and f.events.undo==1)
-        for i,v in Config.Variants do assert(f.events.variants[i]==v.id)end
+        assert(#f.events.variants==3)
+        for i=2,4 do assert(f.events.variants[i-1]==Config.Variants[i].id)end
+    end
+end)
+test("Viewed variants are visibly marked, remain readable and cannot change the displayed character",function()
+    for _,screen in {{240,320},{280,320},{320,370},{320,480},{390,650},{1280,720}}do
+        local h=Harness.new(screen[1],screen[2]);h.ui.availableWidth=screen[1]/h.logical.scale
+        local c=Catalog[1];local seen={[c.id..":gold"]="passed",[c.id..":neon"]="pending",[c.id..":cosmic"]="matched"}
+        local f=Feed.mount(h,c,Config.Variants[1],{swipes=seen});local art=f.body.SwipeCard.Portrait
+        for i,v in Config.Variants do
+            local button=art["Variant_"..v.id];button.action()
+            if i>1 then
+                assert(button:GetAttribute("Viewed") and not button.Active and not button.Selectable and not button.AutoButtonColor)
+                assert(button.Text:find("✓",1,true) and button.TextColor3==h.ui.colors.muted)
+                assert(h.ui.textHeight(button.Text,button.TextSize,button.Size.X.Offset-12,true)+10<=button.Size.Y.Offset)
+            else assert(button.Active and not button:GetAttribute("Viewed"))end
+        end
+        assert(#f.events.variants==0)
     end
 end)
 fs.writeFile("prototype/evidence/feed-readability-tests.json",serde.encode("json",{passed=#tests,tests=tests,

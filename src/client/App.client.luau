@@ -376,6 +376,7 @@ renderLoadScreen = function()
 end
 local function setCardVariant(id)
     if not currentCard or busy or swiping or modal then return end
+    if id==currentCard.variantId or not Logic.variant(id) or state.swipes[Logic.key(currentCard.characterId,id)] then return end
     currentCard.variantId = id; render()
 end
 local function swipe(liked)
@@ -445,7 +446,11 @@ local function renderFeed()
     local chanceText=("ВЗАИМНОСТЬ %d%%"):format(math.floor(Logic.chance(character.id,variant.id)*100+.5))
     local badgeH=math.max(28,UI.textHeight(rarity.label,badgeFont,rarityW-14,true)+8,UI.textHeight(chanceText,badgeFont,chanceW-14,true)+8)
     local variantH=0
-    for _,label in {"База","Золото","Неон","Космос"}do variantH=math.max(variantH,UI.textHeight(label,variantFont,baseLayout.variantWidth-12,true)+12)end
+    local variantLabels={}
+    for i,label in {"База","Золото","Неон","Космос"}do
+        variantLabels[i]=label..(state.swipes[Logic.key(character.id,Config.Variants[i].id)] and " ✓" or "")
+        variantH=math.max(variantH,UI.textHeight(variantLabels[i],variantFont,baseLayout.variantWidth-12,true)+12)
+    end
     local feedLayout=FeedLayout.resolve(width,height,mobile,UI.touchMinimum,{availableWidth=UI.availableWidth,
         captionHeight=nameH+bioH+18,badgeHeight=badgeH,variantHeight=variantH,figureHeight=math.max(160,math.ceil(80/(UI.scale or 1)))})
     local cardW, cardH = feedLayout.cardWidth, feedLayout.cardHeight
@@ -490,9 +495,12 @@ local function renderFeed()
     for i, v in Config.Variants do
         local variantWidth = feedLayout.variantWidth
         local selected = variant.id == v.id
+        local viewed=state.swipes[Logic.key(character.id,v.id)]~=nil
         local column, row = (i - 1) % feedLayout.variantColumns, math.floor((i - 1) / feedLayout.variantColumns)
-        local b = UI.button(art, "Variant_" .. v.id, ({ "База", "Золото", "Неон", "Космос" })[i], UDim2.fromOffset(12 + column * (variantWidth + 6), 12 + row * (feedLayout.variantHeight + 6)), UDim2.fromOffset(variantWidth, feedLayout.variantHeight), selected and C.yellow or C.panel, function() setCardVariant(v.id) end)
+        local b = UI.button(art, "Variant_" .. v.id,variantLabels[i], UDim2.fromOffset(12 + column * (variantWidth + 6), 12 + row * (feedLayout.variantHeight + 6)), UDim2.fromOffset(variantWidth, feedLayout.variantHeight), selected and C.yellow or (viewed and C.bg or C.panel), function() setCardVariant(v.id) end)
         b.TextSize = variantFont;b.TextWrapped=true
+        b.Active=not viewed;b.Selectable=not viewed;b.AutoButtonColor=not viewed
+        b.TextColor3=viewed and C.muted or C.ink;b:SetAttribute("Viewed",viewed)
         b.ZIndex = 4
         if selected then b.Rotation = -2; UI.stroke(b, C.ink).Thickness = 3 end
     end
