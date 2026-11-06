@@ -48,7 +48,23 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="guide" or kind=="guide_remix" then
+    if kind=="album_empty" or kind=="waiting" then
+        local l=h.logical;local shell=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
+        local w=l.mobile and 436 or l.width-52
+        local bh=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
+        local parent=h.ui.new(l.mobile and "ScrollingFrame" or "Frame",{Name="EmptyArea",Position=h.environment.UDim2.new(.5,-w/2,0,shell.bodyY),
+            Size=h.environment.UDim2.fromOffset(w,bh),BackgroundTransparency=1,CanvasSize=h.environment.UDim2.fromOffset(0,0)},h.root)
+        local empty=h.module("src/client/EmptyPostcard.luau",{Layout=ListLayout,Icons=icons})
+        local state={album={},matches={},sentLikes={},feed={},swipes={},pending=0}
+        if kind=="album_empty"then
+            h.module("src/client/Album.luau",{Config=Config,Logic=Logic,Collection=Collection,Locations=Locations,ListLayout=ListLayout,Empty=empty}).render(parent,state,l.mobile,1,{matches=noop,ideas=noop})
+        else
+            for _,candidate in Catalog do if #candidate.name>#character.name then character=candidate end end
+            state.pending=1;state.sentLikes={{characterId=character.id,variantId="cosmic",status="pending"}}
+            h.module("src/client/MatchInbox.luau",{Logic=Logic,Layout=ListLayout,Empty=empty}).render(parent,state,l.mobile,"matches",1,{mount=options.mount,filter=noop,feed=noop})
+        end
+        box=parent
+    elseif kind=="guide" or kind=="guide_remix" then
         h.ui.overlay=function(parent,name)return h.ui.frame(parent,name,h.environment.UDim2.fromScale(0,0),h.environment.UDim2.fromScale(1,1))end
         local metadata={availableHeight=h.logical.height,availableWidth=h.ui.availableWidth,placeVersion=0,setPreference=noop,ideas=noop}
         if kind=="guide_remix"then metadata.stage=3;metadata.remixId="reverse"end
@@ -159,7 +175,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"album_empty","waiting","guide","guide_remix","inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end

@@ -29,7 +29,7 @@ function Inbox.render(body, state, mobile, filter, page, callbacks)
         local titleFont = UI.readableSize(mobile and 24 or 32)
         local titleH = UI.textHeight(titleText,titleFont,width-10,true)
         UI.label(body, "Title", titleText, UDim2.fromOffset(5,top), UDim2.new(1,-10,0,titleH),titleFont,C.ink,true)
-        local description = state.pending > 0 and ("Ждём " .. state.pending .. " ответов. У каждого свой ритм.") or "Взаимные лайки и отправленные сердечки."
+        local description = state.pending > 0 and ("Ответов в пути: " .. state.pending .. ". У каждого свой ритм.") or "Взаимные лайки и отправленные сердечки."
         local font = UI.readableSize(16,10)
         local h = UI.textHeight(description,font,width-10,false)
         top += titleH+4
@@ -61,22 +61,22 @@ function Inbox.render(body, state, mobile, filter, page, callbacks)
             end
         end
         local exhausted = not waiting and not available and not state.lastPass
+        local canBrowse = available or state.lastPass ~= nil
         local options = { mobile = mobile, top = layout.gridY, icon = waiting and "clock" or "phone", badge = waiting and "ОТВЕТЫ В ПУТИ" or "НОВАЯ ИСТОРИЯ ВПЕРЕДИ" }
         if pendingCharacter then
             options.title = pendingCharacter.name
-            options.note = "Лайк может вернуться позже. Пока знакомься дальше."
+            options.note = canBrowse and "Лайк может вернуться позже. Пока знакомься дальше." or "Ответ может прийти позже. Отправленные сердечки сохранились."
             options.mount = function(art) callbacks.mount(art, pendingCharacter.id, pendingVariant.id, { scene = true, portrait = true, keepPortraitWidth = true, portraitAim = pendingCharacter.cameraAim }) end
         elseif exhausted then
             options.title = "КОЛЛЕКЦИЯ ПРОСМОТРЕНА"
             options.note = #(state.sentLikes or {}) > 0 and "Не каждый лайк взаимный. Отправленные сердечки сохранились." or "В этой коллекции больше нет новых карточек."
         else
             options.title = filter == "sent" and "СЕРДЕЧКИ ЕЩЁ НЕ УЛЕТЕЛИ" or (waiting and "СЕРДЕЧКИ В ПУТИ" or "НАЙДЁМ ВЗАИМНЫЙ ВАЙБ")
-            options.note = filter == "sent" and "Свайпни вправо — здесь появятся отправленные лайки." or "У каждого свой вайб. Познакомься с кем-нибудь ещё."
+            options.note = filter == "sent" and "Свайпни вправо — здесь появятся отправленные лайки." or (waiting and not canBrowse and "Ответ может прийти позже. Отправленные сердечки сохранились." or "У каждого свой вайб. Познакомься с кем-нибудь ещё.")
         end
         if exhausted then
             if #(state.sentLikes or {}) > 0 then options.actionText = "МОИ ОТПРАВЛЕННЫЕ ЛАЙКИ"; options.action = function() callbacks.filter("sent") end end
         else
-            local canBrowse = available or state.lastPass ~= nil
             options.actionText = canBrowse and "ЕЩЁ ЗНАКОМСТВА →" or "ОТПРАВЛЕННЫЕ ЛАЙКИ →"
             options.action = canBrowse and callbacks.feed or function() callbacks.filter("sent") end
         end

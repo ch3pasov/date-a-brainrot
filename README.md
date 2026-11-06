@@ -100,6 +100,10 @@ The general guide explains souvenirs, photo frames and replay goals, with an exp
 shortcut to Ideas. Stage guides stay focused on their round. Text reflows at readable
 sizes and the guide keeps its reading position when the window changes.
 
+Empty-album and waiting postcards fit measured text and keep their actions reachable.
+When no new cards remain, waiting messages lead to recorded likes without suggesting
+that the exhausted feed still has someone new.
+
 432 offline checks and both source builds pass. The full-catalog simulation covers
 136 stories, 1,224 rounds and 816 souvenirs across a saved-profile JSON roundtrip. New UI geometry and actions are
 checked on small and wide layouts; Roblox rendering and live persistence have

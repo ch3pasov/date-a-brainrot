@@ -45,11 +45,13 @@ test("Waiting hearts use a real pending character and preserve the sent-list fal
     p.sentLikes = { { characterId = "tung-tung-tung-sahur", variantId = "classic", status = "pending" } }
     local f = fixture(p)
     assert(f.options.icon == "clock" and f.options.mount)
+    assert(f.options.note:find("Отправленные",1,true) and not f.options.note:find("знакомься",1,true))
     f.options.mount({})
     assert(#f.mounts == 1 and f.mounts[1].id == p.sentLikes[1].characterId and f.mounts[1].options.portrait)
     f.options.action(); assert(f.events[1] == "filter:sent")
     p.lastPass = { characterId = "tung-tung-tung-sahur", variantId = "gold" }
     local undo = fixture(p); undo.options.action(); assert(undo.events[1] == "feed")
+    assert(undo.options.note:find("знакомься",1,true))
 end)
 test("An exhausted feed keeps recorded sent likes accessible", function()
     local p = state()

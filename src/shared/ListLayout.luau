@@ -19,17 +19,19 @@ function List.resolve(height, mobile, touch, sent, paginated)
         actionY = rowHeight - actionHeight - 12, pager = pager,
     }
 end
-function List.empty(height, top, mobile, touch)
-    local actionHeight = math.max(66, touch or 0)
-    local noteHeight = mobile and 52 or 58
-    local minimum = 16 + 112 + 12 + noteHeight + 14 + actionHeight + 16
+function List.empty(height, top, mobile, touch, content)
+    content=content or {}
+    local actionHeight = content.actionHeight or math.max(66, touch or 0)
+    local noteHeight = content.noteHeight or (mobile and 52 or 58)
+    local imageHeight = math.max(112,content.imageHeight or 0)
+    local minimum = 16 + imageHeight + 12 + noteHeight + 14 + actionHeight + 16
     local cardHeight = math.max(minimum, height - top - 8)
     local actionY = cardHeight - actionHeight - 16
     local noteY = actionY - 14 - noteHeight
     return {
         top = top, height = cardHeight, actionHeight = actionHeight, actionY = actionY,
         noteY = noteY, noteHeight = noteHeight, imageY = 16,
-        imageHeight = math.min(mobile and 156 or 240, noteY - 28),
+        imageHeight = math.min(math.max(mobile and 156 or 240,imageHeight), noteY - 28),
         bottom = top + cardHeight + 8, scrollable = top + cardHeight + 8 > height,
     }
 end
