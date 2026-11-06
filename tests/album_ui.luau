@@ -109,6 +109,7 @@ test("Full albums keep a usable list, complete captions and correct photo action
             local cell=body.AlbumGrid.UIGridLayout.CellSize;local cw,ch=grid.w*cell.X.Scale+cell.X.Offset,cell.Y.Offset
             for i=(page-1)*6+1,math.min(page*6,#albumData)do
                 local photo=body.AlbumGrid.children["Selfie_"..i]
+                assert(photo:GetAttribute("EntryKey")==albumData[i].key)
                 local previous=rect(photo.Photo,cw,ch);local bottom=previous.y+previous.h
                 for _,name in {"Name","Caption","DatePassport","OpenHint"}do
                     local child=photo.children[name];local r=rect(child,cw,ch)

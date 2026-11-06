@@ -146,6 +146,7 @@ function Inbox.render(body, state, mobile, filter, page, callbacks)
         if not character or not variant or not info then continue end
         local match=info.match
         local row = UI.frame(scroll, "Match_" .. i, UDim2.fromOffset(0, 0), UDim2.new(1, -7, 0, rowHeight), C.panel, 18); row.LayoutOrder = i
+        row:SetAttribute("EntryKey",item.key or Logic.key(item.characterId,item.variantId))
         UI.stroke(row, C.ink)
         if mobile then
             for y = 14, rowHeight - 14, 13 do UI.frame(row, "TicketPerforation", UDim2.fromOffset(artWidth+12, y), UDim2.fromOffset(2, 5), C.muted, 1) end

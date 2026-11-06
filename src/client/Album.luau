@@ -125,6 +125,7 @@ function Album.render(body, state, mobile, page, callbacks)
     for i = (page - 1) * 6 + 1, math.min(page * 6, #state.album) do
         local a = state.album[i]; local c, v = Logic.character(a.characterId), Logic.variant(a.variantId)
         local photo = UI.frame(scroll, "Selfie_" .. i, UDim2.fromOffset(0, 0), UDim2.fromOffset(280, photoHeight), Color3.fromRGB(255, 255, 251), 15); photo.LayoutOrder = i
+        photo:SetAttribute("EntryKey",a.key)
         UI.stroke(photo, C.ink, 0).Thickness = 3
         if a.key==callbacks.focusKey then
             UI.stroke(photo,C.pink,0).Thickness=3

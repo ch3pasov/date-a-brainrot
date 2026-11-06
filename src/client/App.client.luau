@@ -20,6 +20,7 @@ local StateCard=require(script.Parent.StateCard)
 local Viewer = require(script.Parent.ModelViewer)
 local Feedback = require(script.Parent.Feedback)
 local Inbox = require(script.Parent.MatchInbox)
+local ListReading = require(script.Parent.ListReading)
 local Album = require(script.Parent.Album)
 local Collection = require(Shared.Collection)
 local Remix = require(Shared.DateRemix)
@@ -52,6 +53,7 @@ local gameInputLocked = false
 local dateRevealing = false
 local scrollPositions = {}
 local renderedListKey = nil
+local pendingListRestore = nil
 local renderedFeedKey,pendingFeedRestore
 local emptyReading={}
 local gamePresentation = nil
@@ -991,10 +993,11 @@ render = function(preserveModal)
     end
     if body and renderedListKey then
         local list = body:FindFirstChild("AlbumGrid") or body:FindFirstChild("MatchList")
-        if list then scrollPositions[renderedListKey] = list.CanvasPosition end
+        if list and pendingListRestore~=list then scrollPositions[renderedListKey]=ListReading.capture(list) end
     end
     inputStart = nil; dragDistance = 0; albumFocusTarget=nil
     renderedFeedKey=nil;pendingFeedRestore=nil
+    renderedListKey=nil;pendingListRestore=nil
     cleanup(); closeModal(); toastFrame = nil
     buildShell()
     if not profileReady then renderLoadScreen(); return end
@@ -1018,7 +1021,6 @@ render = function(preserveModal)
             end)
         end
     end
-    renderedListKey = nil
     if not activeGame then
         local list = body:FindFirstChild(activeTab == "album" and "AlbumGrid" or "MatchList")
         local key = activeTab == "album" and ("album:" .. albumPage) or ("matches:" .. inboxFilter .. ":" .. listPage)
@@ -1027,6 +1029,7 @@ render = function(preserveModal)
         local focusKey=albumFocusKey
         if list and (focus or scrollPositions[key]) then
             local saved = scrollPositions[key]
+            pendingListRestore=list
             task.defer(function()
                 task.wait()
                 if not list.Parent then return end
@@ -1035,7 +1038,8 @@ render = function(preserveModal)
                     local maximum=math.max(0,list.AbsoluteCanvasSize.Y-list.AbsoluteWindowSize.Y)
                     list.CanvasPosition=Vector2.new(0,math.clamp(target,0,maximum))
                     if albumFocusKey==focusKey then albumFocusKey=nil end
-                elseif saved then list.CanvasPosition=saved end
+                elseif saved then list.CanvasPosition=Vector2.new(0,ListReading.restore(list,saved)) end
+                if pendingListRestore==list then pendingListRestore=nil end
             end)
         end
     end

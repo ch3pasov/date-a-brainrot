@@ -53,6 +53,7 @@ test("Every character, variant and stage fits real inbox rows and opens the corr
             local w,hh=grid.w*cell.X.Scale+cell.X.Offset,cell.Y.Offset
             for i,match in state.matches do
                 local row=body.MatchList.children["Match_"..i]
+                assert(row:GetAttribute("EntryKey")==match.key)
                 local name=textFits(h,row.children.Name,w,hh)
                 local stage=textFits(h,row.Stage,w,hh)
                 local action=textFits(h,row.Continue,w,hh)

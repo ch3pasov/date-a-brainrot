@@ -7,6 +7,7 @@ local Locations=require("../src/shared/Locations")
 local Remix=require("../src/shared/DateRemix")
 local ListLayout=require("../src/shared/ListLayout")
 local FeedLayout=require("../src/shared/FeedLayout")
+local ListReading=require("../src/client/ListReading")
 local fs=require("@lune/fs")
 local luau=require("@lune/luau")
 local serde=require("@lune/serde")
@@ -40,8 +41,8 @@ local function fixture(w,h)
         local albumPage,albumFocusKey,albumFocusTarget=22,nil,nil
         local activeTab,activeGame="album",nil
         local profileReady,busy,swiping,gameInputLocked=true,false,false,false
-        local body,renderedListKey,modalRebuild
-        local scrollPositions={["album:22"]=Vector2.new(0,77)}
+        local body,renderedListKey,pendingListRestore,modalRebuild
+        local scrollPositions={}
         local render
         local function closeModal()end
         local function buildShell()
@@ -57,14 +58,14 @@ local function fixture(w,h)
             busy=function(value)busy=value end,ready=function(value)profileReady=value end,
             playing=function()activeGame={key="playing"}end}
     ]],{environment={
-        state=f.state,mobile=l.mobile,Album=album,Vector2=roblox.Vector2,
+        state=f.state,mobile=l.mobile,Album=album,ListReading=ListReading,Vector2=roblox.Vector2,
         makeBody=function()return f.ui.frame(f.root,"Body",roblox.UDim2.fromOffset(0,0),roblox.UDim2.fromOffset(bodyW,bodyH))end,
         mount=function()end,showStory=function()end,showIdeas=function()end,cleanup=function()end,countUnread=function()return 0 end,
         rpc=function(action)assert(action=="cancelGame");f.cancels+=1 end,
         gui={SetAttribute=function()end},
         task={defer=function(callback)table.insert(f.queued,callback)end,wait=function()end},
     }})()
-    function f.flush()
+    function f.layout()
         local grid=f.api.body().AlbumGrid
         local layout=grid.UIGridLayout
         local columns=f.logical.mobile and 1 or 3
@@ -79,10 +80,18 @@ local function fixture(w,h)
             if index then
                 local row=math.floor(((index-1)%6)/columns)
                 child.AbsolutePosition=roblox.Vector2.new(11,125+row*(layout.CellSize.Y.Offset+layout.CellPadding.Y.Offset)*f.logical.scale-grid.CanvasPosition.Y)
+                child.AbsoluteSize=roblox.Vector2.new(bodyW/columns,layout.CellSize.Y.Offset)*f.logical.scale
             end
         end
-        local callbacks=f.queued;f.queued={};for _,callback in callbacks do callback()end
     end
+    function f.flush()
+        f.layout()
+        local callbacks=f.queued;f.queued={};for _,callback in callbacks do callback()end
+        f.layout()
+    end
+    local rawRender,rawNav=f.api.render,f.api.nav
+    f.api.render=function(...)if f.api.body()then f.layout()end;return rawRender(...)end
+    f.api.nav=function(...)f.layout();return rawNav(...)end
     f.api.render();f.flush()
     return f
 end
@@ -107,9 +116,9 @@ test("Focus is consumed once so later resizing preserves the player's reading po
     local f=fixture(390,650);f.api.nav("album",f.state.album[12].key);f.flush()
     local grid=f.api.body().AlbumGrid;grid.CanvasPosition=roblox.Vector2.new(0,333)
     f.api.render(true);f.flush()
-    assert(f.api.page()==2 and f.api.body().AlbumGrid.CanvasPosition.Y==333)
+    assert(f.api.page()==2 and math.abs(f.api.body().AlbumGrid.CanvasPosition.Y-333)<.001)
     assert(not f.api.body().AlbumGrid.Selfie_12:GetAttribute("Focused"))
-    f.api.nav("album");f.flush();assert(f.api.body().AlbumGrid.CanvasPosition.Y==333)
+    f.api.nav("album");f.flush();assert(math.abs(f.api.body().AlbumGrid.CanvasPosition.Y-333)<.001)
 end)
 test("A rebuild before layout keeps focus pending and a short album clamps to the visible canvas",function()
     local f=fixture(390,650);f.api.nav("album",f.state.album[12].key)
@@ -130,7 +139,7 @@ test("A newly reordered selfie is found by key while blocked or missing targets 
     assert(f.api.page()==1 and f.cancels==1 and f.api.body().AlbumGrid.Selfie_1:GetAttribute("Focused"))
     f.api.body().AlbumGrid.CanvasPosition=roblox.Vector2.new(0,88)
     f.api.nav("album","missing");f.flush()
-    assert(f.api.page()==1 and f.api.body().AlbumGrid.CanvasPosition.Y==88 and f.api.focus()==nil)
+    assert(f.api.page()==1 and math.abs(f.api.body().AlbumGrid.CanvasPosition.Y-88)<.001 and f.api.focus()==nil)
 end)
 fs.writeFile("prototype/evidence/album-focus-tests.json",serde.encode("json",{passed=#tests,tests=tests,
     scope="Production navigation, render orchestration and album builder with controlled GUI/deferred callbacks; no live layout timing test"},true))
