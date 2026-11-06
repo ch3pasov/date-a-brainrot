@@ -1077,7 +1077,7 @@ local function updateScale()
     UI.scale = layout.scale; UI.textBucket = textBucket; UI.availableWidth = availableWidth
     canvas.Size = UDim2.fromOffset(width, height)
     scale.Scale = layout.scale
-    if (layoutChanged or heightChanged or touchChanged or textChanged or ((modal or (activeGame and activeGame.stage==2) or (activeTab=="feed" and not activeGame)) and modalWidthChanged)) and header then render(true) end
+    if (layoutChanged or heightChanged or touchChanged or textChanged or ((modal or (activeGame and activeGame.stage==2) or ((activeTab=="feed" or activeTab=="matches") and not activeGame)) and modalWidthChanged)) and header then render(true) end
 end
 workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
 workspace.CurrentCamera.CFrame = CFrame.new(0, 10, 20)

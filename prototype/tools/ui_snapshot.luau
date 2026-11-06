@@ -4,6 +4,8 @@ local Harness=require("../../tests/support/ui_harness")
 local Call=require("../../tests/support/call_harness")
 local Feed=require("../../tests/support/feed_harness")
 local FeedLayout=require("../../src/shared/FeedLayout")
+local ListLayout=require("../../src/shared/ListLayout")
+local Games=require("../../src/shared/Minigames")
 local Logic=require("../../src/shared/GameLogic")
 local Catalog=require("../../src/shared/Catalog")
 local Collection=require("../../src/shared/Collection")
@@ -46,7 +48,24 @@ local function snapshot(kind,width,height,scrolled)
         return {dispose=noop,setPhotoPose=noop,greet=noop}
     end
     local box
-    if kind=="loading" or kind=="retry" or kind=="feed_empty"then
+    if kind=="inbox" or kind=="sent" then
+        local l=h.logical;local shell=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
+        local w=l.mobile and 436 or l.width-52
+        local bh=l.mobile and shell.dockY-shell.bodyY-18 or l.height-214
+        local parent=h.ui.frame(h.root,"InboxArea",h.environment.UDim2.new(.5,-w/2,0,shell.bodyY),h.environment.UDim2.fromOffset(w,bh))
+        parent.BackgroundTransparency=1
+        local state={matches={},sentLikes={},pending=3,now=2000000000}
+        local characters=table.clone(Catalog);table.sort(characters,function(a,b)return #a.name>#b.name end)
+        for i=1,12 do
+            local c=characters[i];local v=Config.Variants[(i-1)%4+1]
+            local key=Logic.key(c.id,v.id)
+            table.insert(state.matches,{key=key,characterId=c.id,variantId=v.id,stage=(i-1)%4+1,unread=i%2==0})
+            table.insert(state.sentLikes,{key=key,characterId=c.id,variantId=v.id,status=({"pending","matched","declined","unanswered"})[(i-1)%4+1],likedAt=1999990000})
+        end
+        if kind=="sent"then state.matches={state.matches[2]}end
+        h.module("src/client/MatchInbox.luau",{Logic=Logic,Games=Games,Layout=ListLayout}).render(parent,state,l.mobile,kind=="inbox" and "matches" or "sent",1,{mount=options.mount,filter=noop,page=noop,open=noop})
+        box=parent
+    elseif kind=="loading" or kind=="retry" or kind=="feed_empty"then
         local l=h.logical;local layout=FeedLayout.resolve(l.width,l.height,l.mobile,l.touchMinimum)
         local w=l.mobile and math.max(436,h.ui.availableWidth-44) or l.width-52
         local bodyH=l.mobile and layout.dockY-layout.bodyY-18 or l.height-214
@@ -85,13 +104,14 @@ local function snapshot(kind,width,height,scrolled)
         box=h.module("src/client/ResultCard.luau",{Config=Config,Locations=Locations,Collection=Collection,Album=album,Sticker=sticker,PhotoFrame=decor,DateReview=review,FrameReward=reward}).mount(h.root,
             {passed=true,score=1,result=selfie and "album" or "next",newFrames=kind=="frame_reward" and {"perfect"} or nil,response="Мой карандаш назначен директором нелепостей. Первый шедевр уже готов — он немного споткнулся, зато улыбается.",recap={total=4,hits={true,true,true,true}}},options)
     end
-    local function export(node,pw,ph)
+    local function export(node,pw,ph,placement)
         if node.Visible==false or not node.Size then return nil end
         local size=node.Size;local pos=node.Position
         local w=size.X.Scale*pw+size.X.Offset;local hh=size.Y.Scale*ph+size.Y.Offset
         local anchor=node.AnchorPoint
         local x=(pos and pos.X.Scale*pw+pos.X.Offset or 0)-(anchor and anchor.X*w or 0)
         local y=(pos and pos.Y.Scale*ph+pos.Y.Offset or 0)-(anchor and anchor.Y*hh or 0)
+        if placement then x=placement.x;y=placement.y;w=placement.w;hh=placement.h end
         local out={name=node.Name,class=node.ClassName,x=x,y=y,w=w,h=hh,rotation=node.Rotation or 0,
             background=color(node.BackgroundColor3),alpha=1-(node.BackgroundTransparency or 0),text=(node.TextTransparency or 0)<1 and node.Text or nil,font=node.Font,
             fontSize=node.TextSize,textColor=color(node.TextColor3),align=node.TextXAlignment or "center",wrapped=node.TextWrapped==true,children={}}
@@ -105,12 +125,25 @@ local function snapshot(kind,width,height,scrolled)
             if (a.ZIndex or 1)~=(b.ZIndex or 1) then return (a.ZIndex or 1)<(b.ZIndex or 1)end
             return (a:GetAttribute("PreviewOrder") or 0)<(b:GetAttribute("PreviewOrder") or 0)
         end)
+        local cells={};local canvasHeight=node.CanvasSize and node.CanvasSize.Y.Offset or 0
+        local grid=node.children.UIGridLayout
+        if grid then
+            local cw=grid.CellSize.X.Scale*w+grid.CellSize.X.Offset
+            local ch=grid.CellSize.Y.Scale*hh+grid.CellSize.Y.Offset
+            local px=grid.CellPadding.X.Scale*w+grid.CellPadding.X.Offset
+            local py=grid.CellPadding.Y.Scale*hh+grid.CellPadding.Y.Offset
+            local columns=math.max(1,math.floor((w+px)/(cw+px)))
+            local items={};for _,child in children do if child.Size then table.insert(items,child)end end
+            table.sort(items,function(a,b)return (a.LayoutOrder or 0)<(b.LayoutOrder or 0)end)
+            for index,child in items do cells[child]={x=(index-1)%columns*(cw+px),y=math.floor((index-1)/columns)*(ch+py),w=cw,h=ch}end
+            canvasHeight=math.max(canvasHeight,math.ceil(#items/columns)*(ch+py)-py)
+        end
         if node.ClassName=="ScrollingFrame" then
-            out.clip=true;out.canvasHeight=node.CanvasSize.Y.Offset
+            out.clip=true;out.canvasHeight=canvasHeight
             out.scroll=scrolled and math.max(0,out.canvasHeight-hh) or 0
         elseif node.ClipsDescendants then out.clip=true end
         for _,child in children do
-            local item=export(child,w,hh)
+            local item=export(child,w,hh,cells[child])
             if item then table.insert(out.children,item)end
         end
         return out
@@ -120,7 +153,7 @@ local function snapshot(kind,width,height,scrolled)
 end
 local pages={}
 for _,size in {{240,320},{390,650},{1280,720}}do
-    for _,kind in {"loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
+    for _,kind in {"inbox","sent","loading","retry","feed_empty","feed","call","call_miss","match_letter","return_letter","result","selfie","frame_reward","remix_result","booth","ideas","remixes"}do
         for _,bottom in {false,true}do table.insert(pages,snapshot(kind,size[1],size[2],bottom))end
     end
 end

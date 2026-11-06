@@ -5,6 +5,7 @@ local luau = require("@lune/luau")
 local serde = require("@lune/serde")
 local Logic = require("../src/shared/GameLogic")
 local Layout = require("../src/shared/ListLayout")
+local Harness = require("./support/ui_harness")
 local source = fs.readFile("src/client/MatchInbox.luau")
 local first = assert(source:find("local Inbox = {}", 1, true))
 local tests = {}
@@ -19,18 +20,15 @@ end
 local function fixture(profile, filter)
     local f = { events = {}, mounts = {} }
     local before = serde.encode("json", profile)
-    local ui = { touchMinimum = 80, readableSize = function(size) return size end, label = function() return {} end, button = function() return {} end }
-    local module = luau.load(source:sub(first), { debugName = "actual empty inbox routing", environment = {
-        UI = ui, C = {}, Logic = Logic, Layout = Layout,
-        UDim2 = { fromOffset = function() return {} end, new = function() return {} end },
-        Empty = { mount = function(_, options) f.options = options end },
-    } })()
+    local h=Harness.new(390,650)
+    local module=h.module("src/client/MatchInbox.luau",{Logic=Logic,Layout=Layout,
+        Empty={mount=function(_,options)f.options=options end}})
     local callbacks = {
         feed = function() table.insert(f.events, "feed") end,
         filter = function(value) table.insert(f.events, "filter:" .. value) end,
         mount = function(_, id, variant, options) table.insert(f.mounts, { id = id, variant = variant, options = options }) end,
     }
-    module.render({ Size = { Y = { Offset = 526 } } }, profile, true, filter or "matches", 1, callbacks)
+    module.render(h.ui.frame(h.root,"Body",h.environment.UDim2.fromOffset(0,0),h.environment.UDim2.fromOffset(436,526)), profile, true, filter or "matches", 1, callbacks)
     assert(f.options and serde.encode("json", profile) == before, "Rendering must not mutate profile progress")
     return f
 end
