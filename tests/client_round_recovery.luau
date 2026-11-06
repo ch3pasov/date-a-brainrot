@@ -31,8 +31,10 @@ local function fixture(stage,practice)
         return view
     end
     f.view = f.presentation()
+    f.body = {Size={Y={Offset=500}}}
     local environment = {
         initial=f.initial,presentation=f.view,Games=Games,C={panel="panel",bad="bad"},
+        body=f.body,UDim2={fromOffset=function(x,y)return {X={Offset=x},Y={Offset=y}}end},
         os={clock=function() return f.now end},
         task={wait=function(seconds) return coroutine.yield("delay",seconds) end},
         Feedback={play=function(kind) table.insert(f.sounds,kind) end},
@@ -163,6 +165,14 @@ test("A lost final remix reply refreshes rewards and returns directly to souveni
     resume(thread,{news={}})
     assert(f.client.state().game==nil and f.client.state().tab=="album")
     assert(#f.remixes==1 and f.remixes[1]==f.initial.key and #f.stories==0 and #f.completed==0)
+end)
+test("Measured chat height enables scrolling and contracts safely for the next shorter reply",function()
+    local f=fixture(1);f.view.height=900
+    local thread=f.start(1);assert(resume(thread)=="rpc")
+    assert(f.body.CanvasSize.Y.Offset==900 and f.body.ScrollingEnabled and f.body.ScrollBarThickness==3)
+    assert(resume(thread,{token="round",key=f.initial.key,stage=1,step=2,attempts=0,good=true})=="delay")
+    f.view.height=400;resume(thread)
+    assert(f.body.CanvasSize.Y.Offset==400 and not f.body.ScrollingEnabled and f.body.ScrollBarThickness==0)
 end)
 fs.writeFile("prototype/evidence/client-round-recovery-tests.json",serde.encode("json",{passed=#tests,tests=tests},true))
 print("Passed " .. #tests .. " client minigame recovery tests")

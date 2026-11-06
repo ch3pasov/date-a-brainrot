@@ -291,6 +291,8 @@ local function buildShell()
     local feed = activeTab == "feed" and not activeGame
     if mobile then
         body = UI.new("ScrollingFrame", { Name = "Body", Position = UDim2.fromOffset(22, shellLayout.bodyY), Size = UDim2.new(1, -44, 0, feed and shellLayout.bodyHeight or shellLayout.dockY - shellLayout.bodyY - 18), BackgroundColor3 = C.bg, BorderSizePixel = 0, ScrollBarThickness = (activeGame or (feed and shellLayout.scrollable)) and 3 or 0, CanvasSize = UDim2.fromOffset(0, feed and shellLayout.cardHeight or 0), ScrollingEnabled = activeGame ~= nil or (feed and shellLayout.scrollable), ClipsDescendants = not feed or shellLayout.scrollable, ScrollingDirection = Enum.ScrollingDirection.Y, ElasticBehavior = Enum.ElasticBehavior.WhenScrollable }, canvas)
+    elseif activeGame and activeGame.stage == 1 then
+        body = UI.new("ScrollingFrame", { Name = "Body", Position = UDim2.fromOffset(26, 106), Size = UDim2.fromOffset(width - 52, height - 214), BackgroundColor3 = C.bg, BorderSizePixel = 0, ScrollBarThickness = 0, CanvasSize = UDim2.fromOffset(0, 0), ScrollingEnabled = false, ScrollingDirection = Enum.ScrollingDirection.Y }, canvas)
     else
         body = UI.frame(canvas, "Body", UDim2.fromOffset(26, 106), UDim2.fromOffset(width - 52, height - 214), C.bg, 0)
     end
@@ -653,6 +655,11 @@ showResult = function(result, key, completedStage, completedLocation)
 end
 local function syncGameControls()
     if gamePresentation then gamePresentation.setLocked(gameInputLocked) end
+    if activeGame and activeGame.stage == 1 and gamePresentation and gamePresentation.height then
+        body.CanvasSize = UDim2.fromOffset(0, gamePresentation.height)
+        body.ScrollingEnabled = gamePresentation.height > body.Size.Y.Offset
+        body.ScrollBarThickness = body.ScrollingEnabled and 3 or 0
+    end
 end
 local function submitGame(choice)
     if not activeGame or busy or gameInputLocked or (activeGame.stage == 3 and dateRevealing) then return end

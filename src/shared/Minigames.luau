@@ -1,5 +1,6 @@
 local Games = {}
 local Remix = if script then require(script.Parent.DateRemix) else require("./DateRemix")
+local Moments = if script then require(script.Parent.CharacterMoments) else require("./CharacterMoments")
 local Locations
 if script then Locations = require(script.Parent.Locations) else Locations = require("./Locations") end
 Games.stageNames = { "Переписка", "Видеозвонок", "Свидание", "В альбоме" }
@@ -78,7 +79,11 @@ function Games.chatFor(character, seed)
     local order = {}; for i = 1, #bank do order[i] = i end
     for i = #order, 2, -1 do local j = draw(i); order[i], order[j] = order[j], order[i] end
     local out = { mix(intro, draw) }
-    for i = 1, 3 do table.insert(out, mix(bank[order[i]], draw)) end
+    local followups = {}
+    if Moments[character.id] then table.insert(followups, Moments[character.id]) end
+    for i = 1, 3 - #followups do table.insert(followups, bank[order[i]]) end
+    for i = #followups, 2, -1 do local j = draw(i); followups[i], followups[j] = followups[j], followups[i] end
+    for _, followup in followups do table.insert(out, mix(followup, draw)) end
     return out
 end
 function Games.chatMiss(personality, message)

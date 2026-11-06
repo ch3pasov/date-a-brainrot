@@ -1,4 +1,5 @@
 local RunService = game:GetService("RunService")
+local TextService = game:GetService("TextService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Locations = require(Shared.Locations)
 local DateReveal = require(Shared.DateReveal)
@@ -108,7 +109,26 @@ function Presentation.mount(body, session, character, variant, options)
             table.insert(controller.buttons, button)
         end
         UI.frame(phone, "HomeIndicator", UDim2.new(.5, -46, 1, -10), UDim2.fromOffset(92, 4), Color3.fromRGB(85, 91, 86), 2)
+        local function layoutReplies(nextSession)
+            local font = UI.readableSize(mobile and 18 or 17)
+            local measured = PresentationLayout.replyHeight(nextSession.options, font, phoneW - 82, UI.touchMinimum, function(text, size, textWidth)
+                return TextService:GetTextSize(text, size, Enum.Font.GothamBold, Vector2.new(textWidth, 10000)).Y
+            end)
+            local renderedH = math.max(h, PresentationLayout.minimumPhoneHeight(mobile, UI.touchMinimum, measured))
+            local sizing = PresentationLayout.resolve(phoneW, renderedH - 16, mobile, UI.touchMinimum, measured)
+            controller.height = renderedH
+            root.Size = UDim2.fromOffset(w, renderedH); phone.Size = UDim2.fromOffset(phoneW, renderedH - 16)
+            root:SetAttribute("ChatReplyHeight", sizing.replyHeight)
+            log.Size = UDim2.new(1, -24, 0, sizing.logHeight)
+            replyArea.Position = UDim2.new(0, 12, 1, -sizing.repliesHeight - 18)
+            replyArea.Size = UDim2.new(1, -24, 0, sizing.repliesHeight)
+            for i, button in controller.buttons do
+                button.Position = UDim2.fromOffset(0, (i - 1) * (sizing.replyHeight + 8))
+                button.Size = UDim2.new(1, 0, 0, sizing.replyHeight)
+            end
+        end
         local function rebuildChat(nextSession)
+            layoutReplies(nextSession)
             for _, child in log:GetChildren() do if not child:IsA("UIListLayout") then child:Destroy() end end
             local messages = table.clone(nextSession.messages or {}); table.insert(messages, { from = "npc", text = nextSession.prompt, current = true })
             for i, message in messages do
